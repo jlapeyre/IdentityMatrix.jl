@@ -13,7 +13,7 @@ export identitymatrix, materialize
 
 # FIXME: replace checkuniquedim with something more efficient (from LinearAlgebra or Base)
 checkuniquedim(D::LinearAlgebra.Diagonal) = size(D, 1)
-checkuniquedim(AV::AbstractVector) = length(AV)
+checkuniquedim(AV::AbstractVector) = size(AV, 1)
 
 function checkuniquedim(A::AbstractMatrix)
     m, n = size(A)
@@ -28,10 +28,10 @@ function checkuniquedim(A, B)
     return m1
 end
 
-# The fallback method for AbstractArray is already efficient for Eye for:
+# The fallback method for (to AbstractArray) is already efficient for Eye for:
 # length, firstindex, lastindex, axes, checkbounds
 
-# The fallback method (for Diagonal) is already efficient for Eye for:
+# The fallback method (to Diagonal) is already efficient for Eye for:
 # getindex, factorize, real, float, ishermitian, issymmetric, isdiag, istriu,
 # istril, log, most trig functions
 
@@ -57,7 +57,7 @@ Base.minimum(::Eye{T}) where T = zero(T)
 Base.maximum(::Eye{T}) where T = one(T)
 Base.extrema(IM::Eye) = (minimum(IM), maximum(IM)) # FIXME: implement extrema(IM, dims = dims)
 
-for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv) # These override inefficient methods for Eye
+for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
 end
 
@@ -82,7 +82,6 @@ _mycsch(::Type{T}) where T = csch(one(T))
 Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1)))
 
 Base.:(^)(IM::Eye, p::Integer) = IM
-
 (Base.:/)(AM::AbstractMatrix, IM::Eye) = IM * AM
 (Base.:/)(AM::Eye, IM::Eye) = IM * AM
 (Base.:/)(AM::DenseMatrix, IM::Eye) = IM * AM
@@ -100,42 +99,71 @@ end
 (Base.:*)(AM::Diagonal, IM::Eye) = IM * AM
 (Base.:*)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = Eye{Base.promote_op(*, T, V)}(size(IMa, 1))
 
-function Base.kron(a::Eye{T}, b::AbstractMatrix{S}) where {T, S}
-    @assert ! Base.has_offset_axes(b)
-    R = zeros(Base.promote_op(*, T, S), size(a, 1) * size(b, 1), size(a, 2) * size(b, 2))
-    m = 1
-    for j = 1:size(a, 2)
-        for l = 1:size(b, 2)
-            for k = 1:size(b, 1)
-                R[m] = b[k,l]
-                m += 1
+# Kron with first argment either Diagonal or Eye
+for (diagonaltype, A_jj, outputelement) in ((:(A::Diagonal{T}), :(A_jj = A[j, j]), :(A_jj * B[l,k]) ),
+                        ( :(A::Eye{T}), :(nothing), :(B[l,k])))
+    @eval begin
+        function (Base.kron)($diagonaltype, B::AbstractMatrix{S}) where {T<:Number, S<:Number}
+            @assert ! Base.has_offset_axes(B)
+            (mA, nA) = size(A); (mB, nB) = size(B)
+            R = zeros(Base.promote_op(*, T, S), mA * mB, nA * nB)
+            m = 1
+            for j = 1:nA
+                $A_jj
+                for k = 1:nB
+                    for l = 1:mB
+                        R[m] = $outputelement
+                        m += 1
+                    end
+                    m += (nA - 1) * mB
+                end
+                m += mB
             end
-            m += (size(a, 2) - 1) * size(b, 2)
+            return R
         end
-        m += size(b, 2)
     end
-    return R
 end
 
-function Base.kron(a::AbstractMatrix{T}, b::Eye{S}) where {T, S}
-    @assert ! Base.has_offset_axes(a)
-    R = zeros(Base.promote_op(*, T, S), size(a, 1) * size(b, 1), size(a, 2) * size(b, 2))
+function Base.kron(A::AbstractMatrix{T}, B::Diagonal{S}) where {T<:Number, S<:Number}
+    @assert ! Base.has_offset_axes(A)
+    (mA, nA) = size(A); (mB, nB) = size(B)
+    R = zeros(Base.promote_op(*, T, S), mA * mB, nA * nB)
     m = 1
-    for j = 1:size(a, 1)
-        for l = 1:size(b, 1)
-            for k = 1:size(a, 2)
-                R[m] = a[k,j]
-                m += size(b, 2)
+    for j = 1:nA
+        for l = 1:mB
+            Bll = B[l,l]
+            for k = 1:mA
+                R[m] = A[k,j] * Bll
+                m += nB
             end
             m += 1
         end
-        m -= size(b, 2)
+        m -= nB
     end
     return R
 end
 
-Base.kron(a::Eye{T}, b::Eye{T}) where T = Eye{T}(size(a, 1) * size(b, 1))
-Base.kron(a::Eye{T}, b::Eye{V}) where {T, V} = Eye{Base.promote_op(*, T, V)}((size(a, 1) * size(b, 1)))
+# It is not clear if there is any advantage over kron(::AbstractMatrix, ::Diagonal)
+function Base.kron(A::AbstractMatrix{T}, B::Eye{S}) where {T<:Number, S<:Number}
+    @assert ! Base.has_offset_axes(A)
+    (mA, nA) = size(A); (mB, nB) = size(B)
+    R = zeros(Base.promote_op(*, T, S), mA * mB, nA * nB)
+    m = 1
+    for j = 1:nA
+        for l = 1:mB
+            for k = 1:mA
+                R[m] = A[k,j]
+                m += nB
+            end
+            m += 1
+        end
+        m -= nB
+    end
+    return R
+end
+
+Base.kron(a::Eye{T}, b::Eye{T}) where {T<:Number} = Eye{T}(size(a, 1) * size(b, 1))
+Base.kron(a::Eye{T}, b::Eye{V}) where {T<:Number, V<:Number} = Eye{Base.promote_op(*, T, V)}((size(a, 1) * size(b, 1)))
 
 LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
@@ -145,11 +173,12 @@ LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), Li
     identitymatrix(::Type{T}, n::Int) where T
     identitymatrix(n::Integer)
 
-Create an identity matrix of type `Matrix{T}`.
+Create an identity matrix of type `Matrix{T}`. The default for
+`T` is `Float64`.
 """
 function identitymatrix(::Type{T}, n::Integer) where T
     a = zeros(T, n, n)
-    @inbounds for i in 1:n
+    @inbounds @simd for i in 1:n
         a[i, i] = 1
     end
     return a
@@ -158,22 +187,16 @@ identitymatrix(n::Integer) = identitymatrix(Float64, n)
 
 materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
 # materialize(IM::Eye) = Matrix{eltype(IM)}(I, size(IM))
+Base.Matrix(IM::Eye) = materialize(IM)
 
 # For Eye{T}, the fallback method only materializes the diagonal.
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
-
-# Matrix always makes a full copy
-Base.Matrix(IM::Eye) = materialize(IM)
-
-ensuretype(::Type{T}, AM::AbstractArray{T}) where {T} =  AM
-# FIXME: .* is slower than convert
-ensuretype(::Type{T}, AM::AbstractArray{V, N}) where {T, V, N} = convert(Array{T, N}, AM)
 
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
 # by the methods below.
 (Base.:\)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
-(Base.:\)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = ensuretype(Base.promote_op(*, T, V), Base.inv(AM))
-(Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = ensuretype(Base.promote_op(*, T, V), AM)
+(Base.:\)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{Base.promote_op(*, T, V)}, inv(AM))
+(Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{Base.promote_op(*, T, V)}, AM)
 
 end # module

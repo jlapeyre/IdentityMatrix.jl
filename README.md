@@ -11,6 +11,19 @@ Some of the new methods compute the output at compile time.
 Without these new methods, the type `FillArrays.Eye` relies on methods for `Diagonal`,
 many of which are very inefficient for an identity matrix.
 
+To use, load the module
+```julia
+using FillArrays
+using IdentityMatrix
+```
+
+Also provided are:
+
+* `identitymatrix(T, n)`, which is faster than `Matrix{T}(I, n, n)`
+
+*  More efficent methods for `kron(::AbstractArray, ::Diagonal)` and `kron(::Diagonal, ::AbstractArray)`. Note
+   that this applies to any `Diagonal{T<:Number}`, not just identity matrices.
+
 Here is an incomplete list of methods that are improved over the fallbacks for `Eye`.
 
 * `iterate`
