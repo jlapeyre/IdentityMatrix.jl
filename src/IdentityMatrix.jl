@@ -141,26 +141,19 @@ LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
 LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), LinearAlgebra.eigvecs(IM))
 
-####
-
-## materializng is a mystery
-
-# No. Today it is not faster. It is much slower
-# This is faster than Matrix(I, n, n)
+# Using identitymatrix is 5 or 7 times slower than materialize below.
+# The function materialize below is much faster.
 function identitymatrix(T::DataType, n::Int)
     a = zeros(T, n, n)
-    @inbounds for i in 1:n # @inbounds does not change benchmark times
-        a[i, i] = 1  # A bit faster than linear indexing
+    @inbounds for i in 1:n
+        a[i, i] = 1
     end
     return a
 end
 identitymatrix(n::Integer) = identitymatrix(Float64, n)
+# materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
 
-# # The following method is ~7 times slower than the one below it.
-# # This is baffling. There should be no difference
-# # materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
-
-# Some days, this is a bit faster than Matrix{T}(I, n, n)
+# This is a bit faster than Matrix{T}(I, n, n)
 function materialize(IM::Eye)
     a = zeros(eltype(IM), size(IM))
     @inbounds for i in 1:size(IM,1)  # @inbounds does not change benchmark times
@@ -170,9 +163,12 @@ function materialize(IM::Eye)
 end
 
 # For Eye{T}, the fallback method only materializes the diagonal.
-# Here we create a dense matrix in agreement with `copymutable` for other `AbstractArray`
-#Base.copymutable(IM::Eye) = Matrix{eltype(IM)}(I, size(IM))
+# Here we create a dense matrix in agreement with `copymutable` for other `AbstractArray`.
 Base.copymutable(IM::Eye) = materialize(IM)
+Base.Matrix(IM::Eye) = materialize(IM)
+
+#Base.copymutable(IM::Eye) = Matrix{eltype(IM)}(I, size(IM))
+# This is terribly slow for some reason.
 #Base.copymutable(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
 
 ensuretype(::Type{T}, AM::AbstractArray{T}) where {T} =  AM
