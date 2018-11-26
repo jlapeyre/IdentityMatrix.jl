@@ -1,18 +1,3 @@
-"""
-    module IdentityMatrix
-
-This module provides the type `IdentityMatrix`.
-An identity matrix with element type `Float64` is constructed with any of
-```
-Identity{Float64}(n)
-Identity(n)
-eye(Float64, n)
-eye(n)
-```
-
-Objects of this type are meant to act for the most part like the corresponding dense matrix.
-Use `Matrix(eye(n))` to obtain a dense identity matrix.
-"""
 module IdentityMatrix
 import LinearAlgebra
 using FillArrays
