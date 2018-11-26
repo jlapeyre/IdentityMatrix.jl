@@ -160,8 +160,8 @@ materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
 # materialize(IM::Eye) = Matrix{eltype(IM)}(I, size(IM))
 
 # For Eye{T}, the fallback method only materializes the diagonal.
-# Here we create a dense matrix in agreement with `copymutable` for other `AbstractArray`.
-Base.copymutable(IM::Eye) = materialize(IM)
+Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
+
 # Matrix always makes a full copy
 Base.Matrix(IM::Eye) = materialize(IM)
 

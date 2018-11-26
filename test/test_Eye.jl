@@ -12,6 +12,8 @@
         @test IM^p == IM
     end
     Base.copymutable(IM) == ones(eltype(IM), size(IM))
+    @test isa(copy(IM), Diagonal)
+    @test isa(Matrix(IM), Matrix)
 end
 
 @testset "iterate" begin
