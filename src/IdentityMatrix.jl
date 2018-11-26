@@ -141,18 +141,6 @@ LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
 LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), LinearAlgebra.eigvecs(IM))
 
-# Using identitymatrix is 5 or 7 times slower than materialize below.
-# The function materialize below is much faster.
-function identitymatrix(T::DataType, n::Int)
-    a = zeros(T, n, n)
-    @inbounds for i in 1:n
-        a[i, i] = 1
-    end
-    return a
-end
-identitymatrix(n::Integer) = identitymatrix(Float64, n)
-# materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
-
 # This is a bit faster than Matrix{T}(I, n, n)
 function materialize(IM::Eye)
     a = zeros(eltype(IM), size(IM))
@@ -166,6 +154,18 @@ end
 # Here we create a dense matrix in agreement with `copymutable` for other `AbstractArray`.
 Base.copymutable(IM::Eye) = materialize(IM)
 Base.Matrix(IM::Eye) = materialize(IM)
+
+# Using identitymatrix is 5 or 7 times slower than materialize below.
+# The function materialize above is much faster.
+function identitymatrix(T::DataType, n::Int)
+    a = zeros(T, n, n)
+    @inbounds for i in 1:n
+        a[i, i] = 1
+    end
+    return a
+end
+identitymatrix(n::Integer) = identitymatrix(Float64, n)
+# materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
 
 #Base.copymutable(IM::Eye) = Matrix{eltype(IM)}(I, size(IM))
 # This is terribly slow for some reason.
