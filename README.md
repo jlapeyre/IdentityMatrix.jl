@@ -5,6 +5,10 @@
 [![Codecov](https://codecov.io/gh/jlapeyre/IdentityMatrix.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jlapeyre/IdentityMatrix.jl)
 [![Coveralls](https://coveralls.io/repos/github/jlapeyre/IdentityMatrix.jl/badge.svg?branch=master)](https://coveralls.io/github/jlapeyre/IdentityMatrix.jl?branch=master)
 
+This package provides efficient methods for `FillArrays.Eye <: Diagonal` that override the fallback methods.
+
+I plan to remove the type `IdentityMatrix.Identity` described below.
+
 This package implements a matrix-identity type and several methods specialized for this type and for `FillArrays.Eye`.
 
 `Identity(n)` returns an `n` x `n` identity matrix. 
