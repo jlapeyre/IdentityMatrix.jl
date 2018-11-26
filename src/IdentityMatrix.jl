@@ -141,7 +141,13 @@ LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
 LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), LinearAlgebra.eigvecs(IM))
 
-function identitymatrix(::Type{T}, n::Int) where T
+"""
+    identitymatrix(::Type{T}, n::Int) where T
+    identitymatrix(n::Integer)
+
+Create an identity matrix of type `Matrix{T}`.
+"""
+function identitymatrix(::Type{T}, n::Integer) where T
     a = zeros(T, n, n)
     @inbounds for i in 1:n
         a[i, i] = 1
