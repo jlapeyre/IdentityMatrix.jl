@@ -28,11 +28,9 @@ Here is an incomplete list of methods that are improved over the fallbacks for `
 
 * `iterate`
 
-* `copy`, `Matrix`, (maybe)
+* `copy`, `Matrix`
 
 * `kron(a, b)`, where either or both of `a` and `b` is an identity matrix
-
-* `eigen`, `eigvecs`, `eigvals`
 
 * `IM::Idents / A::AbstractMatrix`
 
@@ -46,16 +44,14 @@ Here is an incomplete list of methods that are improved over the fallbacks for `
 
 * `A::AbstractMatrix * IM::Idents`
 
-* `diag`
+* `^(IM::Idents, p::Integer)`
 
-* `isposdef`
+* `eigen`, `eigvecs`, `eigvals`
 
-* `first`, `last`, `minimum`, `maximum`, `extrema`
+* `isposdef`, `imag`
+
+* `diag`, `first`, `last`, `minimum`, `maximum`, `extrema`
 
 * `permutedims`, `triu` `triu!`, `tril`,  `tril`, `inv`
 
 * `det`, `logdet`
-
-* `imag`
-
-* `^(IM::Idents, p::Integer)`

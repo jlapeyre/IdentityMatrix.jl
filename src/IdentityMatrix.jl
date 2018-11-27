@@ -28,6 +28,8 @@ function checkuniquedim(A, B)
     return m1
 end
 
+# Following are functions that I determined will *not* benefit from
+# a specialized method.
 # The fallback method for (to AbstractArray) is already efficient for Eye for:
 # length, firstindex, lastindex, axes, checkbounds
 
