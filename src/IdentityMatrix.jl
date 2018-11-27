@@ -1,15 +1,21 @@
 """
     module IdentityMatrix
 
-Methods for `FillArrays.Eye`.
+Methods for `Diagonal`, `FillArrays.Fill`, and `FillArrays.Eye`.
 """
 module IdentityMatrix
 
 using LinearAlgebra, FillArrays
 import LinearAlgebra: triu, triu!, tril, tril!
+import LinearAlgebra: norm, normp, norm1, norm1, normInf, normMinusInf
 import Base: inv, permutedims
+import StatsBase
 
-export identitymatrix, materialize
+export idmat, materialize
+export norm
+
+checkempty(x) = isempty(x) ? throw(ArgumentError("Got empty container.")) : return nothing
+checkzerodim(x) = (m = size(x, 1); return m == 0 ? throw(ArgumentError("Got empty container.")) : m)
 
 # FIXME: replace checkuniquedim with something more efficient (from LinearAlgebra or Base)
 checkuniquedim(D::LinearAlgebra.Diagonal) = size(D, 1)
@@ -49,15 +55,84 @@ end
 Base.imag(IM::Eye{T}) where T = Diagonal(Fill(zero(T), size(IM, 1)))
 Base.iszero(::Eye) = false
 Base.isone(::Eye) = true
+Base.one(IM::Eye) = IM
+Base.oneunit(IM::Eye) = Base.one(IM)
+Base.zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
 LinearAlgebra.isposdef(::Eye) = true
+
+# Return a Vector to agree with other `diag` methods
 LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
-Base.sum(IM::Eye) = convert(eltype(IM), size(IM, 1))
-Base.prod(IM::Eye) = zero(eltype(IM))
+Base.sum(f::Function, IM::Eye{T}) where T = (m = size(IM, 1); (m * (m - 1)) * f(zero(T)) + m * f(one(T)))
+Base.sum(IM::Eye{T}) where T = convert(T, size(IM, 1))
+Base.prod(f, IM::Eye{T}) where T = (m = size(IM, 1); f(zero(T))^(m * (m - 1)) * f(one(T))^m)
+Base.prod(IM::Eye{T}) where T = size(IM, 1) > 1 ? zero(T) : one(T)
+# Error checking is done in `norm`, which calls the following
+
+norm2(IM::Eye{T}) where T = sqrt(T(size(IM, 1)))
+norm1(IM::Eye{T}) where T = T(size(IM, 1))
+normInf(IM::Eye{T}) where T = one(T)
+normMinusInf(IM::Eye{T}) where T = zero(T)
+
+normp(IM::Eye{T}, p::Real) where T = (m = size(IM, 1); return iszero(p) ? float(T(size(IM, 1))) : T(m)^(1/p))
+
+# We have to reproduce this, because LinearAlgebra does not split norm0 into a function.
+# So, we are unable to replace it.
+# We could file an issue
+function norm(IM::Eye{T}, p::Real=2) where T
+    isempty(IM) && return float(zero(T))
+    if p == 2
+        return norm2(IM)
+    elseif p == 1
+        return norm1(IM)
+    elseif p == Inf
+        return normInf(IM)
+    elseif p == 0
+        return float(T(size(IM, 1)))
+    elseif p == -Inf
+        return normMinusInf(IM)
+    else
+        return normp(IM, p)
+    end
+end
+
+LinearAlgebra.opnorm(IM::Eye{T}, p::Real=1) where T = (isempty(IM) ? zero(T) : one(T)) |> float
+
 Base.first(::Eye{T}) where T = one(T)
 Base.last(::Eye{T}) where T = one(T)
-Base.minimum(::Eye{T}) where T = zero(T)
-Base.maximum(::Eye{T}) where T = one(T)
+
+function Base.minimum(IM::Eye{T}) where T
+    m = size(IM, 1)
+    m > 1 && return zero(T)
+    m < 1 && return Base.minimum(T[]) # Error
+    return one(T)
+end
+
+function Base.maximum(IM::Eye{T}) where T
+    size(IM, 1) == 0 && return Base.maximum(T[])
+    return one(T)
+end
+
+function Base.minimum(D::Diagonal{T}) where T
+    mindiag = Base.minimum(D.diag)
+    size(D, 1) > 1 && return (min(zero(T),mindiag))
+    return mindiag
+end
+
 Base.extrema(IM::Eye) = (minimum(IM), maximum(IM)) # FIXME: implement extrema(IM, dims = dims)
+
+# StatsBase.mean is sum/length and therefore is efficient.
+#StatsBase.mean(IM::Eye{T}) where T = (m = size(IM, 1); convert(T, m * (m - 1)))
+function StatsBase.median(IM::Eye{T}) where T
+    m = checkzerodim(IM)
+    m == 1 && return float(T(1))
+    m == 2 && return float(T(1//2))
+    return float(zero(T))
+end
+
+# const Callable = Union{Function, DataType}
+# Can't use Callable maybe :( Method ambiguity
+Base.any(f::Function, IM::Eye{T}) where T = f(zero(T)) || f(one(T))
+Base.all(f::Function, IM::Eye{T}) where T = f(zero(T)) && f(one(T))
 
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
@@ -83,7 +158,7 @@ _mycsch(::Union{Type{Float64}, Type{Int}}) = _cschval
 _mycsch(::Type{T}) where T = csch(one(T))
 Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1)))
 
-Base.:(^)(IM::Eye, p::Integer) = IM
+(Base.:^)(IM::Eye, p::Integer) = IM
 (Base.:/)(AM::AbstractMatrix, IM::Eye) = IM * AM
 (Base.:/)(AM::Eye, IM::Eye) = IM * AM
 (Base.:/)(AM::DenseMatrix, IM::Eye) = IM * AM
@@ -172,27 +247,36 @@ LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material mat
 LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), LinearAlgebra.eigvecs(IM))
 
 """
-    identitymatrix(::Type{T}, n::Int) where T
-    identitymatrix(n::Integer)
+    idmat(::Type{T}, n::Int) where T
+    idmat(n::Integer)
 
 Create an identity matrix of type `Matrix{T}`. The default for
 `T` is `Float64`.
 """
-function identitymatrix(::Type{T}, n::Integer) where T
+function idmat(::Type{T}, n::Integer) where T
     a = zeros(T, n, n)
-    @inbounds @simd for i in 1:n
+    for i in 1:n
         a[i, i] = 1
     end
     return a
 end
-identitymatrix(n::Integer) = identitymatrix(Float64, n)
+idmat(n::Integer) = idmat(Float64, n)
 
-materialize(IM::Eye) = identitymatrix(eltype(IM), size(IM, 1))
-# materialize(IM::Eye) = Matrix{eltype(IM)}(I, size(IM))
+materialize(IM::Eye) = idmat(eltype(IM), size(IM, 1))
+# materialize(IM::Eye) = Matrix{eltype(IM)}(I, size(IM)) # This is a bit slower
 Base.Matrix(IM::Eye) = materialize(IM)
 
 # For Eye{T}, the fallback method only materializes the diagonal.
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
+
+# Diagonal in general
+Broadcast.broadcasted(f::T, x::Number, D::Diagonal{<:Number}) where T <: typeof(*) = Diagonal(broadcast(f, x, D.diag))
+Broadcast.broadcasted(f::T, D::Diagonal{<:Number}, x::Number) where T <: typeof(*) = broadcast(f, x, D)
+
+Base.:+(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
+Base.:+(s::UniformScaling, IM::Eye) = IM + s
+Base.:-(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) - s.λ, size(IM, 1)))
+Base.:-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), size(IM, 1)))
 
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
@@ -200,5 +284,8 @@ Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
 (Base.:\)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
 (Base.:\)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{Base.promote_op(*, T, V)}, inv(AM))
 (Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{Base.promote_op(*, T, V)}, AM)
+
+(Base.:\)(IM::Eye, s::UniformScaling) = s.λ * IM
+(Base.:\)(s::UniformScaling, IM::Eye) =  IM / s.λ
 
 end # module
