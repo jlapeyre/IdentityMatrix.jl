@@ -8,6 +8,7 @@ module IdentityMatrix
 using LinearAlgebra, FillArrays
 import LinearAlgebra: triu, triu!, tril, tril!
 import Base: inv, permutedims
+import StatsBase
 
 export identitymatrix, materialize
 
@@ -49,15 +50,81 @@ end
 Base.imag(IM::Eye{T}) where T = Diagonal(Fill(zero(T), size(IM, 1)))
 Base.iszero(::Eye) = false
 Base.isone(::Eye) = true
+Base.one(IM::Eye) = IM
+Base.oneunit(IM::Eye) = Base.one(IM)
+Base.zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
 LinearAlgebra.isposdef(::Eye) = true
+
+# Return a Vector to agree with other `diag` methods
 LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
-Base.sum(IM::Eye) = convert(eltype(IM), size(IM, 1))
-Base.prod(IM::Eye) = zero(eltype(IM))
+Base.sum(f::Function, IM::Eye{T}) where T = (m = size(IM, 1); (m * (m - 1)) * f(zero(T)) + m * f(one(T)))
+Base.sum(IM::Eye{T}) where T = convert(T, size(IM, 1))
+Base.prod(f, IM::Eye{T}) where T = (m = size(IM, 1); f(zero(T))^(m * (m - 1)) * f(one(T))^m)
+Base.prod(IM::Eye{T}) where T = size(IM, 1) > 1 ? zero(T) : one(T)
+
+# function Base.sum(IM::Eye{T}; dims::Integer) where T
+#     m = size(IM, 1)
+#     dims == 1 && return ones(T, 1, m)
+#     dims == 2 && return ones(T, m, 1)
+#     dims < 1 && throw(ArgumentError("dimension must be ≥ 1, got 0"))
+#     return IM
+# end
+# Base.sum(f, IM::Eye{T}) where T = size(IM, 1) * f(one(T))
+
+# # There has to be an easier way that this
+# function Base.sum(IM::Eye; dims::Tuple{Int, Int})  = Base.sum(identity, IM; dims)
+# function Base.sum(f, IM::Eye{T}; dims::Tuple{Int, Int}) where T
+#     (d1, d2) = dims
+#     if d1 == 1
+#         if d2 == 2
+#             return fill(Base.sum(f, IM), 1, 1)
+#         elseif d2 < 1
+#             throw(ArgumentError("dimension must be ≥ 1, got 0"))
+#         else
+#             return sum(f, IM; dims=1)
+#         end
+#     elseif d1 == 2
+#         if d2 == 1
+#             return fill(Base.sum(f, IM), 1, 1)
+#         elseif d2 < 1
+#             throw(ArgumentError("dimension must be ≥ 1, got 0"))
+#         else
+#             return sum(f, IM; dims=2)
+#         end
+#     end
+# end
+
+
 Base.first(::Eye{T}) where T = one(T)
 Base.last(::Eye{T}) where T = one(T)
-Base.minimum(::Eye{T}) where T = zero(T)
-Base.maximum(::Eye{T}) where T = one(T)
+
+function Base.minimum(IM::Eye{T}) where T
+    m = size(IM, 1)
+    m > 1 && return zero(T)
+    m < 1 && return Base.minimum(T[]) # Error
+    return one(T)
+end
+
+function Base.maximum(IM::Eye{T}) where T
+    return size(IM, 1) > 0 ? one(T) :  Base.maximum(T[]) # Error
+end
+
 Base.extrema(IM::Eye) = (minimum(IM), maximum(IM)) # FIXME: implement extrema(IM, dims = dims)
+
+# StatsBase.mean is sum/length and therefore is efficient.
+#StatsBase.mean(IM::Eye{T}) where T = (m = size(IM, 1); convert(T, m * (m - 1)))
+function StatsBase.median(IM::Eye{T}) where T
+    m = size(IM, 1)
+    m == 0 && return StatsBase.median(T[]) # throw an error
+    m == 1 && return float(T(1))
+    m == 2 && return float(T(1//2))
+    return float(zero(T))
+end
+
+# const Callable = Union{Function, DataType}
+# Can't use Callable maybe :( Method ambiguity
+Base.any(f::Function, IM::Eye{T}) where T = f(zero(T)) || f(one(T))
+Base.all(f::Function, IM::Eye{T}) where T = f(zero(T)) && f(one(T))
 
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
@@ -193,6 +260,10 @@ Base.Matrix(IM::Eye) = materialize(IM)
 
 # For Eye{T}, the fallback method only materializes the diagonal.
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
+
+
+#Base.:+(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
+#Base.:+(s::UniformScaling + IM::Eye) = IM + s
 
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
