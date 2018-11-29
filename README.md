@@ -50,7 +50,9 @@ Here is an incomplete list of methods that are improved over the fallbacks for `
 
 * `isposdef`, `imag`
 
-* `diag`, `first`, `last`, `minimum`, `maximum`, `extrema`
+* `diag`, `first`, `last`, `minimum`, `maximum`, `extrema`, `any`, `all`, `sum`, `prod`
+
+* `norm`, `opnorm`
 
 * `permutedims`, `triu` `triu!`, `tril`,  `tril`, `inv`
 

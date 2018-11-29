@@ -62,10 +62,38 @@ LinearAlgebra.isposdef(::Eye) = true
 
 # Return a Vector to agree with other `diag` methods
 LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
+
+## Reduction
+
 Base.sum(f::Function, IM::Eye{T}) where T = (m = size(IM, 1); (m * (m - 1)) * f(zero(T)) + m * f(one(T)))
 Base.sum(IM::Eye{T}) where T = convert(T, size(IM, 1))
+function Base.sum(f::Function, D::LinearAlgebra.Diagonal{T}) where T
+    m = size(D, 1)
+    return (m * (m - 1)) * f(zero(T)) + sum(f, D.diag)
+end
+Base.sum(D::LinearAlgebra.Diagonal) = sum(identity, D)
+
+function Base.sum(f::Function, x::Fill)
+    dims = size(x)
+    return prod(dims) * f(FillArrays.getindex_value(x))
+end
+Base.sum(x::Fill) = sum(identity, x)
+
 Base.prod(f, IM::Eye{T}) where T = (m = size(IM, 1); f(zero(T))^(m * (m - 1)) * f(one(T))^m)
 Base.prod(IM::Eye{T}) where T = size(IM, 1) > 1 ? zero(T) : one(T)
+#Base.prod(IM::Eye{T}) where T = convert(T, size(IM, 1))
+
+function Base.prod(f::Function, x::Fill)
+    dims = size(x)
+    return f(FillArrays.getindex_value(x))^prod(dims)
+end
+Base.prod(x::Fill) = prod(identity, x)
+
+function Base.prod(f::Function, D::LinearAlgebra.Diagonal{T}) where T
+    m = size(D, 1)
+    return f(zero(T))^(m * (m - 1)) * prod(f, D.diag)^m
+end
+Base.prod(D::LinearAlgebra.Diagonal) = prod(identity, D)
 
 norm2(IM::Eye{T}) where T = sqrt(T(size(IM, 1)))
 norm1(IM::Eye{T}) where T = T(size(IM, 1))
@@ -134,6 +162,16 @@ end
 Base.any(f::Function, IM::Eye{T}) where T = f(zero(T)) || f(one(T))
 Base.all(f::Function, IM::Eye{T}) where T = f(zero(T)) && f(one(T))
 
+Base.any(f::Function, x::Fill) = f(FillArrays.getindex_value(x))
+Base.all(f::Function, x::Fill) = any(f, x)
+
+Base.any(f::Function, x::Diagonal{T}) where T = size(x, 1) == 1 ? f(x[1]) :
+    f(zero(T)) || any(f, x.diag)
+Base.any(f::Function, x::Diagonal{T}) where T = size(x, 1) == 1 ? f(x[1]) :
+    f(zero(T)) && all(f, x.diag)
+
+#Base.all(f::Function, x::Diagonal) = any(f, x)
+
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
 end
@@ -158,6 +196,8 @@ _mycsch(::Union{Type{Float64}, Type{Int}}) = _cschval
 _mycsch(::Type{T}) where T = csch(one(T))
 Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1)))
 
+(Base.:(==))(x::Fill, y::Fill) = FillArrays.axes(x) == FillArrays.axes(y) &&
+    FillArrays.getindex_value(x) == FillArrays.getindex_value(y)
 (Base.:(==))(IMa::Eye, IMb::Eye) = size(IMa, 1) == size(IMb, 1)
 (Base.:^)(IM::Eye, p::Integer) = IM
 (Base.:/)(AM::AbstractMatrix, IM::Eye) = IM * AM

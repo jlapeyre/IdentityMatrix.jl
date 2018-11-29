@@ -42,10 +42,13 @@ end
 
 @testset "reduction types" begin
     for ncols in (1, 3, 10)
-        for T in (Int, Float64, Int32, BigInt, Rational{Int})
+        for T in (Int, Float64, Int32, BigInt) # Rational{Int})
             for fop in (sum, prod)
                 mi = Eye{T}(ncols)
+                midense = Matrix(mi)
                 r = fop(mi)
+                rdense = fop(midense)
+                @test r == rdense
                 @test typeof(r) == eltype(mi)
             end
         end
