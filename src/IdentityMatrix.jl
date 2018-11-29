@@ -11,7 +11,7 @@ import LinearAlgebra: norm, normp, norm1, norm1, normInf, normMinusInf
 import Base: inv, permutedims
 import StatsBase
 
-export idmat, materialize
+export idmat
 export norm
 
 checkempty(x) = isempty(x) ? throw(ArgumentError("Got empty container.")) : return nothing
