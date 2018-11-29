@@ -158,6 +158,7 @@ _mycsch(::Union{Type{Float64}, Type{Int}}) = _cschval
 _mycsch(::Type{T}) where T = csch(one(T))
 Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1)))
 
+(Base.:(==))(IMa::Eye, IMb::Eye) = size(IMa, 1) == size(IMb, 1)
 (Base.:^)(IM::Eye, p::Integer) = IM
 (Base.:/)(AM::AbstractMatrix, IM::Eye) = IM * AM
 (Base.:/)(AM::Eye, IM::Eye) = IM * AM
