@@ -5,7 +5,7 @@
 [![Codecov](https://codecov.io/gh/jlapeyre/IdentityMatrix.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jlapeyre/IdentityMatrix.jl)
 [![Coveralls](https://coveralls.io/repos/github/jlapeyre/IdentityMatrix.jl/badge.svg?branch=master)](https://coveralls.io/github/jlapeyre/IdentityMatrix.jl?branch=master)
 
-This package implements several methods specialized for types `Digonal`,
+This package implements several methods specialized for types `Diagonal`,
 `FillArrays.Fill`, and `FillArrays.Eye`. They are more efficient, often much more,
 than the fallback methods.
 
@@ -57,3 +57,10 @@ Here is an incomplete list of methods that are improved over the fallbacks for `
 * `permutedims`, `triu` `triu!`, `tril`,  `tril`, `inv`
 
 * `det`, `logdet`
+
+<!--  LocalWords:  IdentityMatrix Codecov FillArrays julia idmat fallbacks kron
+ -->
+<!--  LocalWords:  UniformScaling eigen eigvecs eigvals isposdef imag diag triu
+ -->
+<!--  LocalWords:  extrema opnorm permutedims tril inv det logdet
+ -->
