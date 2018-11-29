@@ -7,15 +7,11 @@ module IdentityMatrix
 
 using LinearAlgebra, FillArrays
 import LinearAlgebra: triu, triu!, tril, tril!
-import LinearAlgebra: norm, normp, norm1, norm1, normInf, normMinusInf
+import LinearAlgebra: norm, normp, norm1, norm2, normInf, normMinusInf
 import Base: inv, permutedims
 import StatsBase
 
-export idmat
-export norm
-
-checkempty(x) = isempty(x) ? throw(ArgumentError("Got empty container.")) : return nothing
-checkzerodim(x) = (m = size(x, 1); return m == 0 ? throw(ArgumentError("Got empty container.")) : m)
+export idmat, norm
 
 # FIXME: replace checkuniquedim with something more efficient (from LinearAlgebra or Base)
 checkuniquedim(D::LinearAlgebra.Diagonal) = size(D, 1)
@@ -98,7 +94,12 @@ Base.prod(D::LinearAlgebra.Diagonal) = prod(identity, D)
 norm2(IM::Eye{T}) where T = sqrt(T(size(IM, 1)))
 norm1(IM::Eye{T}) where T = T(size(IM, 1))
 normInf(IM::Eye{T}) where T = one(T)
-normMinusInf(IM::Eye{T}) where T = zero(T)
+
+function normMinusInf(IM::Eye{T}) where T
+    m = size(IM, 1)
+    m == 1 && return one(T)
+    return zero(T)
+end
 
 normp(IM::Eye{T}, p::Real) where T = (m = size(IM, 1); return iszero(p) ? float(T(size(IM, 1))) : T(m)^(1/p))
 

@@ -1,3 +1,15 @@
+@testset "norms" begin
+    for ncols in (0, 1, 3, 10)
+        for T in (Float64, Int)
+            m = Eye{T}(ncols)
+            md = Matrix(m)
+            for op in (opnorm, norm, x -> norm(x, 1), x -> norm(x, 2), x -> norm(x, Inf), x -> norm(x, -Inf), x -> norm(x, 3//2))
+                @test op(m) == op(md)
+            end
+        end
+    end
+end
+
 @testset "Eye" begin
     for ncols in (1, 2, 5)
         IM = Eye(ncols)
@@ -120,6 +132,8 @@ end
     end
 end
 
-@testset "uniform scaling" begin
-    #Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
-end
+
+
+# @testset "uniform scaling" begin
+#     #Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
+# end
