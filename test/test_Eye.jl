@@ -15,7 +15,7 @@ end
         IM = Eye(ncols)
         IMd = Matrix(IM)
         @test isa(imag(IM), Diagonal)
-        for f in (imag, iszero, isone, isposdef, sum, prod, first, last,
+        for f in (imag, iszero, isposdef, sum, prod, first, last,
                   minimum, maximum, extrema, triu, triu!, tril, tril!, inv,
                   diag, det, logdet, sqrt)
             @test f(IM) == f(copy(IMd))
