@@ -39,18 +39,9 @@ end
 # getindex, factorize, real, float, ishermitian, issymmetric, isdiag, istriu,
 # istril, log, most trig functions
 
-function Base.iterate(iter::Eye{T}, istate = (1, 1)) where T
-    (i::Int, j::Int) = istate
-    m = size(iter, 1)
-    return i > m ? nothing :
-        ((@inbounds getindex(iter, i, j)),
-         j == m ? (i + 1, 1) : (i, j + 1))
-end
-
 # The default method for Diagonal returns Diagonal with a dense diagonal
 Base.imag(IM::Eye{T}) where T = Diagonal(Fill(zero(T), size(IM, 1)))
 Base.iszero(::Eye) = false
-Base.isone(::Eye) = true
 Base.one(IM::Eye) = IM
 Base.oneunit(IM::Eye) = Base.one(IM)
 Base.zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))

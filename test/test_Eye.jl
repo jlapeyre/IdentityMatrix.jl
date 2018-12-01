@@ -28,13 +28,6 @@ end
     end
 end
 
-@testset "iterate" begin
-    for ncols in (1, 3, 10)
-        IM = Eye(ncols)
-        @test [x for x in IM] == IM
-    end
-end
-
 @testset "mul and div" begin
     for ncols in (1, 3 ,10)
         IM = Eye(ncols)
