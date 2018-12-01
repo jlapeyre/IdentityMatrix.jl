@@ -5,6 +5,10 @@
 [![Codecov](https://codecov.io/gh/jlapeyre/IdentityMatrix.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jlapeyre/IdentityMatrix.jl)
 [![Coveralls](https://coveralls.io/repos/github/jlapeyre/IdentityMatrix.jl/badge.svg?branch=master)](https://coveralls.io/github/jlapeyre/IdentityMatrix.jl?branch=master)
 
+NOTE: This package is being canibalized; Pieces moved to `FillArrays.jl` and `LinearAlgebra`. If you don't have all these
+in sync, you make get warnings or errors about overridden methods.
+But, the master branches of `IdentityMatrix.jl` and `FillArrays.jl` will be kept in sync.
+
 This package implements several methods specialized for types `Diagonal`,
 `FillArrays.Fill`, and `FillArrays.Eye`. They are more efficient, often much more,
 than the fallback methods.
