@@ -107,8 +107,14 @@ end
 
 LinearAlgebra.opnorm(IM::Eye{T}, p::Real=1) where T = (isempty(IM) ? zero(T) : one(T)) |> float
 
-Base.first(::Eye{T}) where T = one(T)
-Base.last(::Eye{T}) where T = one(T)
+for f in (:first, :last)
+    @eval begin
+        function (Base.$f)(IM::Eye{T}) where T
+            size(IM, 1) == 0 && throw(BoundsError("0-element $(typeof(IM))", 0))
+            return  one(T)
+        end
+    end
+end
 
 function Base.minimum(IM::Eye{T}) where T
     m = size(IM, 1)
