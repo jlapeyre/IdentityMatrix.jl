@@ -13,6 +13,8 @@ import StatsBase
 
 export idmat, norm
 
+include("diagonal.jl")
+
 # FIXME: replace checkuniquedim with something more efficient (from LinearAlgebra or Base)
 checkuniquedim(D::LinearAlgebra.Diagonal) = size(D, 1)
 checkuniquedim(AV::AbstractVector) = size(AV, 1)
@@ -54,11 +56,6 @@ LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
 
 Base.sum(f::Function, IM::Eye{T}) where T = (m = size(IM, 1); (m * (m - 1)) * f(zero(T)) + m * f(one(T)))
 Base.sum(IM::Eye{T}) where T = convert(T, size(IM, 1))
-function Base.sum(f::Function, D::LinearAlgebra.Diagonal{T}) where T
-    m = size(D, 1)
-    return (m * (m - 1)) * f(zero(T)) + sum(f, D.diag)
-end
-Base.sum(D::LinearAlgebra.Diagonal) = sum(identity, D)
 
 function Base.sum(f::Function, x::Fill)
     dims = size(x)
@@ -75,12 +72,6 @@ function Base.prod(f::Function, x::Fill)
     return f(FillArrays.getindex_value(x))^prod(dims)
 end
 Base.prod(x::Fill) = prod(identity, x)
-
-function Base.prod(f::Function, D::LinearAlgebra.Diagonal{T}) where T
-    m = size(D, 1)
-    return f(zero(T))^(m * (m - 1)) * prod(f, D.diag)^m
-end
-Base.prod(D::LinearAlgebra.Diagonal) = prod(identity, D)
 
 norm2(IM::Eye{T}) where T = sqrt(T(size(IM, 1)))
 norm1(IM::Eye{T}) where T = T(size(IM, 1))
@@ -131,12 +122,6 @@ function Base.maximum(IM::Eye{T}) where T
     return one(T)
 end
 
-function Base.minimum(D::Diagonal{T}) where T
-    mindiag = Base.minimum(D.diag)
-    size(D, 1) > 1 && return (min(zero(T),mindiag))
-    return mindiag
-end
-
 Base.extrema(IM::Eye) = (minimum(IM), maximum(IM)) # FIXME: implement extrema(IM, dims = dims)
 
 # StatsBase.mean is sum/length and therefore is efficient.
@@ -157,10 +142,6 @@ Base.all(f::Function, IM::Eye{T}) where T = f(zero(T)) && f(one(T))
 Base.any(f::Function, x::Fill) = f(FillArrays.getindex_value(x))
 Base.all(f::Function, x::Fill) = any(f, x)
 
-Base.any(f::Function, x::Diagonal{T}) where T = size(x, 1) == 1 ? f(x[1]) :
-    f(zero(T)) || any(f, x.diag)
-Base.any(f::Function, x::Diagonal{T}) where T = size(x, 1) == 1 ? f(x[1]) :
-    f(zero(T)) && all(f, x.diag)
 
 #Base.all(f::Function, x::Diagonal) = any(f, x)
 
@@ -234,24 +215,6 @@ for (diagonaltype, A_jj, outputelement) in ((:(A::Diagonal{T}), :(A_jj = A[j, j]
     end
 end
 
-function Base.kron(A::AbstractMatrix{T}, B::Diagonal{S}) where {T<:Number, S<:Number}
-    @assert ! Base.has_offset_axes(A)
-    (mA, nA) = size(A); (mB, nB) = size(B)
-    R = zeros(Base.promote_op(*, T, S), mA * mB, nA * nB)
-    m = 1
-    for j = 1:nA
-        for l = 1:mB
-            Bll = B[l,l]
-            for k = 1:mA
-                R[m] = A[k,j] * Bll
-                m += nB
-            end
-            m += 1
-        end
-        m -= nB
-    end
-    return R
-end
 
 # It is not clear if there is any advantage over kron(::AbstractMatrix, ::Diagonal)
 function Base.kron(A::AbstractMatrix{T}, B::Eye{S}) where {T<:Number, S<:Number}
@@ -303,14 +266,6 @@ Base.Matrix(IM::Eye) = materialize(IM)
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
 
 # Diagonal in general
-Broadcast.broadcasted(f::T, x::Number, D::Diagonal{<:Number}) where T <: typeof(*) = Diagonal(broadcast(f, x, D.diag))
-Broadcast.broadcasted(f::T, D::Diagonal{<:Number}, x::Number) where T <: typeof(*) = broadcast(f, x, D)
-
-Base.:+(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
-Base.:+(s::UniformScaling, IM::Eye) = IM + s
-Base.:-(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) - s.λ, size(IM, 1)))
-Base.:-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), size(IM, 1)))
-
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
 # by the methods below.
