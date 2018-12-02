@@ -6,9 +6,12 @@ Methods for `Diagonal`, `FillArrays.Fill`, and `FillArrays.Eye`.
 module IdentityMatrix
 
 using LinearAlgebra, FillArrays
+
+using FillArrays: getindex_value
+
 import FillArrays: AbstractFill
 import LinearAlgebra: triu, triu!, tril, tril!
-import LinearAlgebra: norm, normp, norm1, norm2, normInf, normMinusInf
+import LinearAlgebra: norm, normp, norm1, norm2, normInf, normMinusInf, inv
 import Base: inv, permutedims
 import StatsBase
 
@@ -154,6 +157,11 @@ Base.all(f::Function, x::Fill) = any(f, x)
 
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
+end
+
+function LinearAlgebra.inv(DF::Diagonal{<:Any, Tf}) where {Tf <: Fill}
+    value = getindex_value(DF.diag)
+    return Diagonal(Fill(inv(value), size(DF, 1)))
 end
 
 # This agrees with diag for dense matrices in that any integer `k` is allowed.

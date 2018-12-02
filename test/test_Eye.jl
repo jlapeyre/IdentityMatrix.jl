@@ -125,6 +125,17 @@ end
     end
 end
 
+@testset "Fill" begin
+    for ncols in (1, 3, 10)
+        for T in (Float64,)
+            for val in (1, 2, 2.5, 10)
+                fm = Diagonal(Fill{T}(val, ncols))
+                fmd = Matrix(fm)
+                @test inv(fm) == inv(fmd)
+            end
+        end
+    end
+end
 
 
 # @testset "uniform scaling" begin
