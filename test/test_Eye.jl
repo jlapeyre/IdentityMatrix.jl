@@ -45,6 +45,42 @@ end
     end
 end
 
+@testset "algebra with AbstractFill" begin
+    for d in (1, 2, 3, 10)
+       for  T1 in (Int, Float64, ComplexF64)
+           for T2 in (Int, Float64, ComplexF64)
+               @test Eye{T1}(d) * Zeros{T2}(d, d) == Zeros{typeof(one(T1)*one(T2))}(d, d)
+               @test Eye{T1}(d) * Zeros{T2}(d) == Zeros{typeof(one(T1)*one(T2))}(d)
+               @test Eye{T1}(d) * Ones{T2}(d, d) == Ones{typeof(one(T1)*one(T2))}(d, d)
+               @test Eye{T1}(d) * Ones{T2}(d) == Ones{typeof(one(T1)*one(T2))}(d)
+               for val in (1, 2)
+                   @test Eye{T1}(d) * Fill{T2}(val, d, d) == Fill{typeof(one(T1)*one(T2))}(val, d, d)
+                   @test Eye{T1}(d) * Fill{T2}(val, d) == Fill{typeof(one(T1)*one(T2))}(val, d)
+               end
+           end
+       end
+    end
+end
+
+@testset "any all" begin
+    for T in (Int, Float64, ComplexF64)
+        d1 = 1
+        m = Eye{T}(d1)
+        @test ! any(iszero, m)
+        @test ! all(iszero, m)
+        @test any(isone, m)
+        @test all(isone, m)
+        for d in (2, 3)
+            m = Eye{T}(d)
+            @test any(iszero, m)
+            @test ! all(iszero, m)
+            @test any(isone, m)
+            @test ! all(isone, m)
+        end
+    end
+end
+
+
 @testset "reduction types" begin
     for ncols in (1, 3, 10)
         for T in (Int, Float64, Int32, BigInt) # Rational{Int})

@@ -7,11 +7,11 @@ module IdentityMatrix
 
 using LinearAlgebra, FillArrays
 
-using  FillArrays: AbstractFill, getindex_value
+using  FillArrays: AbstractFill, ZerosVecOrMat, getindex_value
 
 using Base: promote_op, has_offset_axes
 
-import Base: any, all, inv, permutedims, imag, iszero, one, zero, oneunit,
+import Base: any, all, inv, permutedims, imag, one, zero, oneunit,
     sqrt, sum, prod, first, last, minimum, maximum, extrema,
     kron
 
@@ -67,14 +67,12 @@ end
 one(DF::Diagonal{T,V}) where {T, V <: AbstractFill} = Eye{T}(size(DF, 1))
 one(AF::AbstractFill{T, 2, <: Any}) where T = Eye{T}(size(AF, 1))
 
-
-
 #one(IM::Eye) = IM
 
 imag(IM::Eye{T}) where T = Diagonal(Zeros{real(T)}(size(IM, 1)))
-iszero(::Eye) = false
 oneunit(IM::Eye) = one(IM)
 zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
+
 isposdef(::Eye) = true
 
 # Return a Vector to agree with other `diag` methods
@@ -169,13 +167,27 @@ function IdentityMatrix.median(IM::Eye{T}) where T
     return zero(Tout)
 end
 
-# const Callable = Union{Function, DataType}
-# Can't use Callable maybe :( Method ambiguity
-Base.any(f::Function, IM::Eye{T}) where T = f(zero(T)) || f(one(T))
-Base.all(f::Function, IM::Eye{T}) where T = f(zero(T)) && f(one(T))
 
-Base.any(f::Function, x::Fill) = f(FillArrays.getindex_value(x))
-Base.all(f::Function, x::Fill) = any(f, x)
+# (all|any)(isempty, []) have special behavior
+# We do not follow it here for Eye(0)
+function any(f::Function, IM::Eye{T}) where T
+    d = size(IM, 1)
+    d > 1 && return f(zero(T)) || f(one(T))
+    d == 1 && return f(one(T))
+    return false
+end
+
+function all(f::Function, IM::Eye{T}) where T
+    d = size(IM, 1)
+    d > 1 && return f(zero(T)) && f(one(T))
+    d == 1 && return f(one(T))
+    return false
+end
+
+# In particular, these make iszero(Eye(n)) and isone efficient.
+#  all(iszero, D.diag) is called in diagonal.jl
+any(f::Function, x::AbstractFill) = f(getindex_value(x))
+all(f::Function, x::AbstractFill) = f(getindex_value(x))
 
 
 #Base.all(f::Function, x::Diagonal) = any(f, x)
@@ -224,6 +236,16 @@ function *(IM::Eye{T}, AV::AbstractVector{V}) where {T, V}
     return convert(Vector{promote_op(*, T, V)}, AV)
 end
 
+const AbstractFillVecOrMat{V} = Union{AbstractFill{V, 1}, AbstractFill{V, 2}}
+
+# Handles in particular Eye(n) * Ones(n), Eye(n) * Ones(n, n)
+function *(IM::Eye{T}, AF::AT) where {T, AT <: AbstractFillVecOrMat{V}} where {V}
+    Tout = typeof(one(T) * one(V))
+    return convert(AbstractFill{Tout}, AF)
+end
+
+# Needed for disambiguation
+*(IM::Eye{T}, Z::ZerosVecOrMat{V}) where {T, V} = Zeros{promote_op(*, T, V)}(size(Z))
 
 function *(IM::Eye{T}, AM::AbstractMatrix{V}) where {T,V}
     junk = checkuniquedim(IM, AM)
