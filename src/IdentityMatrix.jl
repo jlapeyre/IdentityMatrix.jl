@@ -11,9 +11,9 @@ using  FillArrays: AbstractFill, ZerosVecOrMat, getindex_value
 
 using Base: promote_op, has_offset_axes
 
-import Base: any, all, inv, permutedims, imag, one, zero, oneunit,
-    sqrt, sum, prod, first, last, minimum, maximum, extrema,
-    kron
+import Base: any, all, inv, permutedims, imag, one, isone, zero, oneunit,
+       sqrt, sum, prod, first, last, minimum, maximum, extrema,
+       kron
 
 # emacs is confused by this backslash
 eval(Meta.parse("import Base: \\"))
@@ -21,8 +21,9 @@ const left_division = eval(Meta.parse("\\"))
 
 import Base: *, /, +, -, ^, ==
 
-import LinearAlgebra: triu, triu!, tril, tril!, eigmin, eigmax,
-       norm, normp, norm1, norm2, normInf, normMinusInf, opnorm, isposdef
+import LinearAlgebra: diag, triu, triu!, tril, tril!, eigmin, eigmax,
+       norm, normp, norm1, norm2, normInf, normMinusInf, opnorm, isposdef,
+       det, logdet
 
 # FillArrays
 export Eye, Fill, Ones, Zeros
@@ -76,7 +77,7 @@ zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
 isposdef(::Eye) = true
 
 # Return a Vector to agree with other `diag` methods
-LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
+diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
 
 ## Reduction
 
@@ -167,9 +168,18 @@ function IdentityMatrix.median(IM::Eye{T}) where T
     return zero(Tout)
 end
 
+function isone(AF::V) where {V <: AbstractFill{T,2}} where T
+    ! isone(getindex_value(AF)) && return false
+    (n,m) = size(AF)
+    n != m && return false
+    n == 1 && return true
+    return false
+end
 
-# (all|any)(isempty, []) have special behavior
-# We do not follow it here for Eye(0)
+# Now efficient iszero on Eye, Zeros, Ones
+
+# all(isempty, []) and any(isempty, []) have special behavior.
+# We do not follow it here for Eye(0).
 function any(f::Function, IM::Eye{T}) where T
     d = size(IM, 1)
     d > 1 && return f(zero(T)) || f(one(T))
@@ -189,14 +199,11 @@ end
 any(f::Function, x::AbstractFill) = f(getindex_value(x))
 all(f::Function, x::AbstractFill) = f(getindex_value(x))
 
-
-#Base.all(f::Function, x::Diagonal) = any(f, x)
-
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
 end
 
-function LinearAlgebra.inv(DF::Diagonal{<:Any, Tf}) where {Tf <: Fill}
+function inv(DF::Diagonal{<:Any, Tf}) where {Tf <: Fill}
     value = getindex_value(DF.diag)
     return Diagonal(Fill(inv(value), size(DF, 1)))
 end
@@ -210,9 +217,9 @@ function LinearAlgebra.diag(IM::Eye{T}, k::Integer) where T
     return zeros(T, m - abs(k))
 end
 
-LinearAlgebra.det(::Eye{T}) where T = one(T)
-LinearAlgebra.logdet(::Eye{T}) where T = log(one(T))
-Base.sqrt(IM::Eye) = IM
+det(::Eye{T}) where T = one(T)
+logdet(::Eye{T}) where T = log(one(T))
+sqrt(IM::Eye) = IM
 
 # There are a few trig functions `f` for which `f(IM)` cannot be computed
 # at compile time. This is one way to solve this problem.

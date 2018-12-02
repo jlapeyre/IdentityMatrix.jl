@@ -62,7 +62,7 @@ end
     end
 end
 
-@testset "any all" begin
+@testset "any all iszero isone" begin
     for T in (Int, Float64, ComplexF64)
         d1 = 1
         m = Eye{T}(d1)
@@ -70,12 +70,51 @@ end
         @test ! all(iszero, m)
         @test any(isone, m)
         @test all(isone, m)
+
+        onem = Ones{T}(d1, d1)
+        @test isone(onem)
+        @test ! iszero(onem)
+
+        zerom = Zeros{T}(d1, d1)
+        @test ! isone(zerom)
+        @test  iszero(zerom)
+
+        fillm0 = Fill(T(0), d1, d1)
+        @test ! isone(fillm0)
+        @test   iszero(fillm0)
+
+        fillm1 = Fill(T(1), d1, d1)
+        @test isone(fillm1)
+        @test ! iszero(fillm1)
+
+        fillm2 = Fill(T(2), d1, d1)
+        @test ! isone(fillm2)
+        @test ! iszero(fillm2)
+
         for d in (2, 3)
             m = Eye{T}(d)
             @test any(iszero, m)
             @test ! all(iszero, m)
             @test any(isone, m)
             @test ! all(isone, m)
+
+            m1 = Ones{T}(d, d)
+            @test ! isone(m1)
+            @test ! iszero(m1)
+            @test all(isone, m1)
+            @test ! all(iszero, m1)
+
+            m2 = Zeros{T}(d, d)
+            @test ! isone(m2)
+            @test iszero(m2)
+            @test ! all(isone, m2)
+            @test  all(iszero, m2)
+
+            m3 = Fill(T(2), d, d)
+            @test ! isone(m3)
+            @test ! iszero(m3)
+            @test ! all(isone, m3)
+            @test ! all(iszero, m3)
         end
     end
 end

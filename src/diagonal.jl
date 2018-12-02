@@ -57,21 +57,22 @@ end
 #     @eval Broadcast.broadcasted(f::typeof($ft), D::Diagonal{<:Number}) = Diagonal(broadcast(f, D.diag))
 # end
 
-function Broadcast.broadcasted(f::Function, D::Diagonal{T}) where T <: Number
-    return iszero(fz) ? broadcasted_diag_zero(f, D) : broadcasted_diag_full(f, fz, D)
-end
+# function Broadcast.broadcasted(f::Function, D::Diagonal{T}) where T <: Number
+#     fz = f(zero(T))
+#     return iszero(fz) ? broadcasted_diag_zero(f, D) : broadcasted_diag_full(f, fz, D)
+# end
 
-@inline function broadcasted_diag_zero(f, D)
-    return Diagonal(broadcast(f, D.diag))
-end
+# @inline function broadcasted_diag_zero(f, D)
+#     return Diagonal(broadcast(f, D.diag))
+# end
 
-@inline function broadcasted_diag_full(f, fz, D::Diagonal{T}) where T
-    R = fill(fz, size(D))
-    for i in 1:size(D, 1)
-        R[i,i] = f(D.diag[i])
-    end
-    return R
-end
+# @inline function broadcasted_diag_full(f, fz, D::Diagonal{T}) where T
+#     R = fill(fz, size(D))
+#     for i in 1:size(D, 1)
+#         R[i,i] = f(D.diag[i])
+#     end
+#     return R
+# end
 
 
 
