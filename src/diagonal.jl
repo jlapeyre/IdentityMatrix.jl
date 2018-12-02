@@ -13,16 +13,22 @@ function Base.prod(f::Function, D::LinearAlgebra.Diagonal{T}) where T
 end
 Base.prod(D::LinearAlgebra.Diagonal) = prod(identity, D)
 
-function Base.minimum(D::Diagonal{T}) where T
+function Base.minimum(D::Diagonal{T}) where T <: Number
     mindiag = Base.minimum(D.diag)
-    size(D, 1) > 1 && return (min(zero(T),mindiag))
+    size(D, 1) > 1 && return (min(zero(T), mindiag))
     return mindiag
 end
 
-Base.any(f::Function, x::Diagonal{T}) where T = size(x, 1) == 1 ? f(x[1]) :
+function Base.maximum(D::Diagonal{T}) where T <: Number
+    maxdiag = Base.maximum(D.diag)
+    size(D, 1) > 1 && return (max(zero(T), maxdiag))
+    return maxdiag
+end
+
+Base.any(f::Function, x::Diagonal{T}) where T <: Number = size(x, 1) == 1 ? f(x[1]) :
     f(zero(T)) || any(f, x.diag)
 
-Base.all(f::Function, x::Diagonal{T}) where T = size(x, 1) == 1 ? f(x[1]) :
+Base.all(f::Function, x::Diagonal{T}) where T <: Number = size(x, 1) == 1 ? f(x[1]) :
     f(zero(T)) && all(f, x.diag)
 
 function Base.kron(A::AbstractMatrix{T}, B::Diagonal{S}) where {T<:Number, S<:Number}
@@ -44,10 +50,30 @@ function Base.kron(A::AbstractMatrix{T}, B::Diagonal{S}) where {T<:Number, S<:Nu
     return R
 end
 
-Broadcast.broadcasted(f::T, x::Number, D::Diagonal{<:Number}) where T <: typeof(*) = Diagonal(broadcast(f, x, D.diag))
-Broadcast.broadcasted(f::T, D::Diagonal{<:Number}, x::Number) where T <: typeof(*) = broadcast(f, x, D)
+# Broadcast.broadcasted(f::typeof(*), x::Number, D::Diagonal{<:Number}) = Diagonal(Broadcast.broadcast(f, x, D.diag))
+# Broadcast.broadcasted(f::typeof(*), D::Diagonal{<:Number}, x::Number) = Broadcast.broadcasted(f, x, D)
 
-Base.:+(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
-Base.:+(s::UniformScaling, IM::Eye) = IM + s
-Base.:-(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) - s.λ, size(IM, 1)))
-Base.:-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), size(IM, 1)))
+# for ft in (round, floor, abs, sqrt, sin, sind, cbrt, tan)
+#     @eval Broadcast.broadcasted(f::typeof($ft), D::Diagonal{<:Number}) = Diagonal(broadcast(f, D.diag))
+# end
+
+function Broadcast.broadcasted(f::Function, D::Diagonal{T}) where T <: Number
+    fz = f(zero(T))
+    return iszero(fz) ? broadcasted_diag_zero(f, D) : broadcasted_diag_full(f, fz, D)
+end
+
+@inline function broadcasted_diag_zero(f, D)
+    return Diagonal(broadcast(f, D.diag))
+end
+
+@inline function broadcasted_diag_full(f, fz, D::Diagonal{T}) where T
+    R = fill(fz, size(D))
+    for i in 1:size(D, 1)
+        R[i,i] = f(D.diag[i])
+    end
+    return R
+end
+
+
+
+
