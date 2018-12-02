@@ -9,15 +9,22 @@ using LinearAlgebra, FillArrays
 
 using  FillArrays: AbstractFill, getindex_value
 
+using Base: promote_op, has_offset_axes
+
 import Base: inv, permutedims, imag, iszero, one, zero, oneunit,
-       sum
+       sum, prod, first, last, minimum, maximum, extrema, kron
 
 import LinearAlgebra: triu, triu!, tril, tril!, eigmin, eigmax,
-       norm, normp, norm1, norm2, normInf, normMinusInf, isposdef
+       norm, normp, norm1, norm2, normInf, normMinusInf, opnorm, isposdef
 
-import StatsBase
+# FillArrays
+export Eye, Fill, Ones, Zeros
 
-export idmat, norm
+# LinearAlgebra
+export Diagonal
+
+# IdentityMatrix
+export idmat
 
 include("diagonal.jl")
 
@@ -53,7 +60,7 @@ iszero(::Eye) = false
 one(IM::Eye) = IM
 oneunit(IM::Eye) = one(IM)
 zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
-LinearAlgebra.isposdef(::Eye) = true
+isposdef(::Eye) = true
 
 # Return a Vector to agree with other `diag` methods
 LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
@@ -69,15 +76,14 @@ function sum(f::Function, x::Fill)
 end
 sum(x::Fill) = sum(identity, x)
 
-Base.prod(f, IM::Eye{T}) where T = (m = size(IM, 1); f(zero(T))^(m * (m - 1)) * f(one(T))^m)
-Base.prod(IM::Eye{T}) where T = size(IM, 1) > 1 ? zero(T) : one(T)
-#Base.prod(IM::Eye{T}) where T = convert(T, size(IM, 1))
+prod(f, IM::Eye{T}) where T = (m = size(IM, 1); f(zero(T))^(m * (m - 1)) * f(one(T))^m)
+prod(IM::Eye{T}) where T = size(IM, 1) > 1 ? zero(T) : one(T)
 
-function Base.prod(f::Function, x::Fill)
+function prod(f::Function, x::Fill)
     dims = size(x)
     return f(FillArrays.getindex_value(x))^prod(dims)
 end
-Base.prod(x::Fill) = prod(identity, x)
+prod(x::Fill) = prod(identity, x)
 
 norm2(IM::Eye{T}) where T = sqrt(T(size(IM, 1)))
 norm1(IM::Eye{T}) where T = T(size(IM, 1))
@@ -122,28 +128,30 @@ for f in (:first, :last)
     end
 end
 
-function Base.minimum(IM::Eye{T}) where T
+function minimum(IM::Eye{T}) where T
     m = size(IM, 1)
     m > 1 && return zero(T)
-    m < 1 && return Base.minimum(T[]) # Error
+    m < 1 && return minimum(T[]) # Error
     return one(T)
 end
 
-function Base.maximum(IM::Eye{T}) where T
-    size(IM, 1) == 0 && return Base.maximum(T[])
+function maximum(IM::Eye{T}) where T
+    size(IM, 1) == 0 && return maximum(T[])
     return one(T)
 end
 
-Base.extrema(IM::Eye) = (minimum(IM), maximum(IM)) # FIXME: implement extrema(IM, dims = dims)
+extrema(IM::Eye) = (minimum(IM), maximum(IM)) # FIXME: implement extrema(IM, dims = dims)
 
 # StatsBase.mean is sum/length and therefore is efficient.
-#StatsBase.mean(IM::Eye{T}) where T = (m = size(IM, 1); convert(T, m * (m - 1)))
-function StatsBase.median(IM::Eye{T}) where T
+# StatsBase.mean(IM::Eye{T}) where T = (m = size(IM, 1); convert(T, m * (m - 1)))
+function median end
+function IdentityMatrix.median(IM::Eye{T}) where T
     m = size(IM, 1)
-    m == 0 && return StatsBase.median(T[]) # throw an error
-    m == 1 && return float(T(1))
-    m == 2 && return float(T(1//2))
-    return float(zero(T))
+    m == 0 && throw(ArgumentError("median of an empty Eye is undefined"))
+    Tout = promote_op(/, T, T)
+    m == 1 && return one(Tout)
+    m == 2 && return Tout(1) / Tout(2)
+    return zero(Tout)
 end
 
 # const Callable = Union{Function, DataType}
@@ -196,25 +204,25 @@ Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1
 
 function (Base.:*)(IM::Eye{T}, AV::AbstractVector{V}) where {T, V}
     junk = checkuniquedim(IM, AV)
-    return convert(Vector{Base.promote_op(*, T, V)}, AV)
+    return convert(Vector{promote_op(*, T, V)}, AV)
 end
 
 function (Base.:*)(IM::Eye{T}, AM::AbstractMatrix{V}) where {T,V}
     junk = checkuniquedim(IM, AM)
-    return convert(Matrix{Base.promote_op(*, T, V)}, AM)
+    return convert(Matrix{promote_op(*, T, V)}, AM)
 end
 (Base.:*)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = IM * AM
 (Base.:*)(AM::Diagonal, IM::Eye) = IM * AM
-(Base.:*)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = Eye{Base.promote_op(*, T, V)}(size(IMa, 1))
+(Base.:*)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = Eye{promote_op(*, T, V)}(size(IMa, 1))
 
 # Kron with first argment either Diagonal or Eye
 for (diagonaltype, A_jj, outputelement) in ((:(A::Diagonal{T}), :(A_jj = A[j, j]), :(A_jj * B[l,k]) ),
                         ( :(A::Eye{T}), :(nothing), :(B[l,k])))
     @eval begin
-        function (Base.kron)($diagonaltype, B::AbstractMatrix{S}) where {T<:Number, S<:Number}
+        function (kron)($diagonaltype, B::AbstractMatrix{S}) where {T<:Number, S<:Number}
             @assert ! Base.has_offset_axes(B)
             (mA, nA) = size(A); (mB, nB) = size(B)
-            R = zeros(Base.promote_op(*, T, S), mA * mB, nA * nB)
+            R = zeros(promote_op(*, T, S), mA * mB, nA * nB)
             m = 1
             for j = 1:nA
                 $A_jj
@@ -234,10 +242,10 @@ end
 
 
 # It is not clear if there is any advantage over kron(::AbstractMatrix, ::Diagonal)
-function Base.kron(A::AbstractMatrix{T}, B::Eye{S}) where {T<:Number, S<:Number}
+function kron(A::AbstractMatrix{T}, B::Eye{S}) where {T<:Number, S<:Number}
     @assert ! Base.has_offset_axes(A)
     (mA, nA) = size(A); (mB, nB) = size(B)
-    R = zeros(Base.promote_op(*, T, S), mA * mB, nA * nB)
+    R = zeros(promote_op(*, T, S), mA * mB, nA * nB)
     m = 1
     for j = 1:nA
         for l = 1:mB
@@ -252,8 +260,8 @@ function Base.kron(A::AbstractMatrix{T}, B::Eye{S}) where {T<:Number, S<:Number}
     return R
 end
 
-Base.kron(a::Eye{T}, b::Eye{T}) where {T<:Number} = Eye{T}(size(a, 1) * size(b, 1))
-Base.kron(a::Eye{T}, b::Eye{V}) where {T<:Number, V<:Number} = Eye{Base.promote_op(*, T, V)}((size(a, 1) * size(b, 1)))
+kron(a::Eye{T}, b::Eye{T}) where {T<:Number} = Eye{T}(size(a, 1) * size(b, 1))
+kron(a::Eye{T}, b::Eye{V}) where {T<:Number, V<:Number} = Eye{promote_op(*, T, V)}((size(a, 1) * size(b, 1)))
 
 LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
@@ -295,8 +303,8 @@ Base.:-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), si
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
 # by the methods below.
 (Base.:\)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
-(Base.:\)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{Base.promote_op(*, T, V)}, inv(AM))
-(Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{Base.promote_op(*, T, V)}, AM)
+(Base.:\)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, inv(AM))
+(Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, AM)
 
 (Base.:\)(IM::Eye, s::UniformScaling) = s.λ * IM
 (Base.:\)(s::UniformScaling, IM::Eye) =  IM / s.λ
