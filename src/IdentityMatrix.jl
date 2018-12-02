@@ -11,8 +11,17 @@ using  FillArrays: AbstractFill, getindex_value
 
 using Base: promote_op, has_offset_axes
 
-import Base: inv, permutedims, imag, iszero, one, zero, oneunit,
-       sum, prod, first, last, minimum, maximum, extrema, kron, *, /
+import Base: any, all, inv, permutedims, imag, iszero, one, zero, oneunit,
+    sqrt, sum, prod, first, last, minimum, maximum, extrema,
+    kron
+
+const leftmul = eval(Meta.parse("\\"))
+
+eval(Meta.parse("import Base: \\"))
+
+const left_division = eval(Meta.parse("\\"))
+
+import Base: *, /, +, -, ^, ==
 
 import LinearAlgebra: triu, triu!, tril, tril!, eigmin, eigmax,
        norm, normp, norm1, norm2, normInf, normMinusInf, opnorm, isposdef
@@ -202,16 +211,18 @@ _mycsch(::Union{Type{Float64}, Type{Int}}) = _cschval
 _mycsch(::Type{T}) where T = csch(one(T))
 Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1)))
 
-(Base.:(==))(x::Fill, y::Fill) = FillArrays.axes(x) == FillArrays.axes(y) &&
+==(x::Fill, y::Fill) = FillArrays.axes(x) == FillArrays.axes(y) &&
     FillArrays.getindex_value(x) == FillArrays.getindex_value(y)
-(Base.:(==))(IMa::Eye, IMb::Eye) = size(IMa, 1) == size(IMb, 1)
-(Base.:^)(IM::Eye, p::Integer) = IM
+
+==(IMa::Eye, IMb::Eye) = size(IMa, 1) == size(IMb, 1)
+
+^(IM::Eye, p::Integer) = IM
 /(AM::AbstractMatrix, IM::Eye) = IM * AM
 /(AM::Eye, IM::Eye) = IM * AM
 /(AM::DenseMatrix, IM::Eye) = IM * AM
 
-function (Base.:*)(IM::Eye{T}, AV::AbstractVector{V}) where {T, V}
-    junk = checkuniquedim(IM, AV)
+function *(IM::Eye{T}, AV::AbstractVector{V}) where {T, V}
+    _ = checkuniquedim(IM, AV)
     return convert(Vector{promote_op(*, T, V)}, AV)
 end
 
@@ -304,16 +315,16 @@ Base.Matrix(IM::Eye) = materialize(IM)
 # For Eye{T}, the fallback method only materializes the diagonal.
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
 
-Base.:+(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
-Base.:+(s::UniformScaling, IM::Eye) = IM + s
-Base.:-(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) - s.λ, size(IM, 1)))
-Base.:-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), size(IM, 1)))
++(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
++(s::UniformScaling, IM::Eye) = IM + s
+-(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) - s.λ, size(IM, 1)))
+-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), size(IM, 1)))
 
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
 # by the methods below.
-(Base.:\)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
-(Base.:\)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, inv(AM))
+\(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
+\(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, inv(AM))
 (Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, AM)
 
 (Base.:\)(IM::Eye, s::UniformScaling) = s.λ * IM
