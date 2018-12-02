@@ -271,7 +271,11 @@ Base.Matrix(IM::Eye) = materialize(IM)
 # For Eye{T}, the fallback method only materializes the diagonal.
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
 
-# Diagonal in general
+Base.:+(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) + s.λ, size(IM, 1)))
+Base.:+(s::UniformScaling, IM::Eye) = IM + s
+Base.:-(IM::Eye{T}, s::UniformScaling) where T = Diagonal(Fill(one(T) - s.λ, size(IM, 1)))
+Base.:-(s::UniformScaling, IM::Eye{T}) where T = Diagonal(Fill(s.λ - one(T), size(IM, 1)))
+
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
 # by the methods below.
