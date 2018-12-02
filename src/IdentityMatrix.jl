@@ -12,7 +12,7 @@ using  FillArrays: AbstractFill, getindex_value
 using Base: promote_op, has_offset_axes
 
 import Base: inv, permutedims, imag, iszero, one, zero, oneunit,
-       sum, prod, first, last, minimum, maximum, extrema, kron
+       sum, prod, first, last, minimum, maximum, extrema, kron, *, /
 
 import LinearAlgebra: triu, triu!, tril, tril!, eigmin, eigmax,
        norm, normp, norm1, norm2, normInf, normMinusInf, opnorm, isposdef
@@ -55,9 +55,17 @@ end
 # istril, log, most trig functions
 
 # The default method for Diagonal returns Diagonal with a dense diagonal
-imag(IM::Eye{T}) where T = Diagonal(Fill(zero(T), size(IM, 1)))
+
+# Test these well!
+one(DF::Diagonal{T,V}) where {T, V <: AbstractFill} = Eye{T}(size(DF, 1))
+one(AF::AbstractFill{T, 2, <: Any}) where T = Eye{T}(size(AF, 1))
+
+
+
+#one(IM::Eye) = IM
+
+imag(IM::Eye{T}) where T = Diagonal(Zeros{real(T)}(size(IM, 1)))
 iszero(::Eye) = false
-one(IM::Eye) = IM
 oneunit(IM::Eye) = one(IM)
 zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
 isposdef(::Eye) = true
@@ -95,7 +103,7 @@ function normMinusInf(IM::Eye{T}) where T
     return zero(T)
 end
 
-normp(IM::Eye{T}, p::Real) where T = (m = size(IM, 1); return iszero(p) ? float(T(size(IM, 1))) : T(m)^(1/p))
+normp(IM::Eye{T}, p::Real) where T = (m = size(IM, 1); return iszero(p) ? float(T(size(IM, 1))) : T(m)^(1 / p))
 
 # We have to reproduce this, because LinearAlgebra does not split norm0 into a function.
 # So, we are unable to replace it.
@@ -198,22 +206,24 @@ Base.csch(IM::Eye) = LinearAlgebra.Diagonal(Fill(_mycsch(eltype(IM)), size(IM, 1
     FillArrays.getindex_value(x) == FillArrays.getindex_value(y)
 (Base.:(==))(IMa::Eye, IMb::Eye) = size(IMa, 1) == size(IMb, 1)
 (Base.:^)(IM::Eye, p::Integer) = IM
-(Base.:/)(AM::AbstractMatrix, IM::Eye) = IM * AM
-(Base.:/)(AM::Eye, IM::Eye) = IM * AM
-(Base.:/)(AM::DenseMatrix, IM::Eye) = IM * AM
+/(AM::AbstractMatrix, IM::Eye) = IM * AM
+/(AM::Eye, IM::Eye) = IM * AM
+/(AM::DenseMatrix, IM::Eye) = IM * AM
 
 function (Base.:*)(IM::Eye{T}, AV::AbstractVector{V}) where {T, V}
     junk = checkuniquedim(IM, AV)
     return convert(Vector{promote_op(*, T, V)}, AV)
 end
 
-function (Base.:*)(IM::Eye{T}, AM::AbstractMatrix{V}) where {T,V}
+
+function *(IM::Eye{T}, AM::AbstractMatrix{V}) where {T,V}
     junk = checkuniquedim(IM, AM)
     return convert(Matrix{promote_op(*, T, V)}, AM)
 end
-(Base.:*)(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = IM * AM
-(Base.:*)(AM::Diagonal, IM::Eye) = IM * AM
-(Base.:*)(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = Eye{promote_op(*, T, V)}(size(IMa, 1))
+
+*(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = IM * AM
+*(AM::Diagonal, IM::Eye) = IM * AM
+*(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = Eye{promote_op(*, T, V)}(size(IMa, 1))
 
 # Kron with first argment either Diagonal or Eye
 for (diagonaltype, A_jj, outputelement) in ((:(A::Diagonal{T}), :(A_jj = A[j, j]), :(A_jj * B[l,k]) ),
