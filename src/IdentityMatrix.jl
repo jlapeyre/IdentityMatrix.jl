@@ -6,6 +6,7 @@ Methods for `Diagonal`, `FillArrays.Fill`, and `FillArrays.Eye`.
 module IdentityMatrix
 
 using LinearAlgebra, FillArrays
+import FillArrays: AbstractFill
 import LinearAlgebra: triu, triu!, tril, tril!
 import LinearAlgebra: norm, normp, norm1, norm2, normInf, normMinusInf
 import Base: inv, permutedims
@@ -247,6 +248,11 @@ Base.kron(a::Eye{T}, b::Eye{V}) where {T<:Number, V<:Number} = Eye{Base.promote_
 LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
 LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), LinearAlgebra.eigvecs(IM))
+
+import LinearAlgebra: eigmin, eigmax
+for f in (:eigmin, :eigmax)
+    @eval ($f)(M::Diagonal{T,Tf}) where {T, Tf <: AbstractFill} = M.diag.value
+end
 
 """
     idmat(::Type{T}, n::Int) where T
