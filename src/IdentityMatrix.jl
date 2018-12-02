@@ -15,10 +15,8 @@ import Base: any, all, inv, permutedims, imag, iszero, one, zero, oneunit,
     sqrt, sum, prod, first, last, minimum, maximum, extrema,
     kron
 
-const leftmul = eval(Meta.parse("\\"))
-
+# emacs is confused by this backslash
 eval(Meta.parse("import Base: \\"))
-
 const left_division = eval(Meta.parse("\\"))
 
 import Base: *, /, +, -, ^, ==
@@ -323,11 +321,11 @@ Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
 # Put these last. The backslash confuses emacs.
 # Diagonal is already efficient. But, we use `Eye` to remove fatal method ambiguity intrduced
 # by the methods below.
-\(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
-\(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, inv(AM))
-(Base.:\)(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, AM)
+left_division(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
+left_division(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, inv(AM))
+left_division(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, AM)
 
-(Base.:\)(IM::Eye, s::UniformScaling) = s.λ * IM
-(Base.:\)(s::UniformScaling, IM::Eye) =  IM / s.λ
+left_division(IM::Eye, s::UniformScaling) = s.λ * IM
+left_division(s::UniformScaling, IM::Eye) =  IM / s.λ
 
 end # module
