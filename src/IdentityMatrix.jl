@@ -7,12 +7,14 @@ module IdentityMatrix
 
 using LinearAlgebra, FillArrays
 
-using FillArrays: getindex_value
+using  FillArrays: AbstractFill, getindex_value
 
-import FillArrays: AbstractFill
-import LinearAlgebra: triu, triu!, tril, tril!
-import LinearAlgebra: norm, normp, norm1, norm2, normInf, normMinusInf, inv
-import Base: inv, permutedims
+import Base: inv, permutedims, imag, iszero, one, zero, oneunit,
+       sum
+
+import LinearAlgebra: triu, triu!, tril, tril!, eigmin, eigmax,
+       norm, normp, norm1, norm2, normInf, normMinusInf, isposdef
+
 import StatsBase
 
 export idmat, norm
@@ -46,11 +48,11 @@ end
 # istril, log, most trig functions
 
 # The default method for Diagonal returns Diagonal with a dense diagonal
-Base.imag(IM::Eye{T}) where T = Diagonal(Fill(zero(T), size(IM, 1)))
-Base.iszero(::Eye) = false
-Base.one(IM::Eye) = IM
-Base.oneunit(IM::Eye) = Base.one(IM)
-Base.zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
+imag(IM::Eye{T}) where T = Diagonal(Fill(zero(T), size(IM, 1)))
+iszero(::Eye) = false
+one(IM::Eye) = IM
+oneunit(IM::Eye) = one(IM)
+zero(IM::Eye{T}) where T = Diagonal(Zeros{T}(size(IM, 1)))
 LinearAlgebra.isposdef(::Eye) = true
 
 # Return a Vector to agree with other `diag` methods
@@ -58,14 +60,14 @@ LinearAlgebra.diag(IM::Eye{T}) where T = ones(T, size(IM, 1))
 
 ## Reduction
 
-Base.sum(f::Function, IM::Eye{T}) where T = (m = size(IM, 1); (m * (m - 1)) * f(zero(T)) + m * f(one(T)))
-Base.sum(IM::Eye{T}) where T = convert(T, size(IM, 1))
+sum(f::Function, IM::Eye{T}) where T = (m = size(IM, 1); (m * (m - 1)) * f(zero(T)) + m * f(one(T)))
+sum(IM::Eye{T}) where T = convert(T, size(IM, 1))
 
-function Base.sum(f::Function, x::Fill)
+function sum(f::Function, x::Fill)
     dims = size(x)
     return prod(dims) * f(FillArrays.getindex_value(x))
 end
-Base.sum(x::Fill) = sum(identity, x)
+sum(x::Fill) = sum(identity, x)
 
 Base.prod(f, IM::Eye{T}) where T = (m = size(IM, 1); f(zero(T))^(m * (m - 1)) * f(one(T))^m)
 Base.prod(IM::Eye{T}) where T = size(IM, 1) > 1 ? zero(T) : one(T)
@@ -257,9 +259,8 @@ LinearAlgebra.eigvals(IM::Eye{T}) where T = diag(IM)
 LinearAlgebra.eigvecs(IM::Eye) = IM # method for Diagonal returns a material matrix
 LinearAlgebra.eigen(IM::Eye) = LinearAlgebra.Eigen(LinearAlgebra.eigvals(IM), LinearAlgebra.eigvecs(IM))
 
-import LinearAlgebra: eigmin, eigmax
 for f in (:eigmin, :eigmax)
-    @eval ($f)(M::Diagonal{T,Tf}) where {T, Tf <: AbstractFill} = M.diag.value
+    @eval ($f)(M::Diagonal{T,Tf}) where {T, Tf <: AbstractFill} = getindex_value(M.diag)
 end
 
 """
