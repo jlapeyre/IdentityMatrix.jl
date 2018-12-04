@@ -13,7 +13,7 @@ using Base: promote_op, has_offset_axes
 
 import Base: any, all, inv, permutedims, imag, one, isone, zero, oneunit,
        sqrt, sum, prod, first, last, minimum, maximum, extrema,
-       kron
+       kron, Matrix
 
 # emacs is confused by this backslash
 eval(Meta.parse("import Base: \\"))
@@ -30,9 +30,6 @@ export Eye, Fill, Ones, Zeros
 
 # LinearAlgebra
 export Diagonal
-
-# IdentityMatrix
-export idmat
 
 include("diagonal.jl")
 
@@ -319,25 +316,8 @@ for f in (:eigmin, :eigmax)
     @eval ($f)(M::Diagonal{T,Tf}) where {T, Tf <: AbstractFill} = getindex_value(M.diag)
 end
 
-"""
-    idmat(::Type{T}, n::Int) where T
-    idmat(n::Integer)
-
-Create an identity matrix of type `Matrix{T}`. The default for
-`T` is `Float64`.
-"""
-function idmat(::Type{T}, n::Integer) where T
-    a = zeros(T, n, n)
-    for i in 1:n
-        a[i, i] = 1
-    end
-    return a
-end
-idmat(n::Integer) = idmat(Float64, n)
-
-materialize(IM::Eye) = idmat(eltype(IM), size(IM, 1))
-# materialize(IM::Eye) = Matrix{eltype(IM)}(I, size(IM)) # This is a bit slower
-Base.Matrix(IM::Eye) = materialize(IM)
+materialize(IM::Eye) = Matrix{eltype(IM)}(I, size(IM)) # This is a bit slower
+Matrix(IM::Eye) = materialize(IM)
 
 # For Eye{T}, the fallback method only materializes the diagonal.
 Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))

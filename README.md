@@ -21,13 +21,6 @@ using FillArrays
 using IdentityMatrix
 ```
 
-Also provided are:
-
-* `idmat(T, n)`, which is (sometimes) a bit faster than `Matrix{T}(I, n, n)`. If you want efficiency
-you should benchmark them for your use case, or look at the code.
-
-Here is an incomplete list of methods that are improved over the fallbacks for `Eye`.
-
 * `iterate`
 
 * `copy`, `Matrix`
