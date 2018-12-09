@@ -161,37 +161,6 @@ function IdentityMatrix.median(IM::Eye{T}) where T
     return zero(Tout)
 end
 
-function isone(AF::V) where {V <: AbstractFill{T,2}} where T
-    ! isone(getindex_value(AF)) && return false
-    (n,m) = size(AF)
-    n != m && return false
-    n == 1 && return true
-    return false
-end
-
-# Now efficient iszero on Eye, Zeros, Ones
-
-# all(isempty, []) and any(isempty, []) have special behavior.
-# We do not follow it here for Eye(0).
-function any(f::Function, IM::Eye{T}) where T
-    d = size(IM, 1)
-    d > 1 && return f(zero(T)) || f(one(T))
-    d == 1 && return f(one(T))
-    return false
-end
-
-function all(f::Function, IM::Eye{T}) where T
-    d = size(IM, 1)
-    d > 1 && return f(zero(T)) && f(one(T))
-    d == 1 && return f(one(T))
-    return false
-end
-
-# In particular, these make iszero(Eye(n)) and isone efficient.
-#  all(iszero, D.diag) is called in diagonal.jl
-any(f::Function, x::AbstractFill) = f(getindex_value(x))
-all(f::Function, x::AbstractFill) = f(getindex_value(x))
-
 for f in (:permutedims, :triu, :triu!, :tril, :tril!, :inv)
     @eval ($f)(IM::Eye) = IM
 end
@@ -327,6 +296,7 @@ Base.copymutable(IM::Eye) = Diagonal(ones(eltype(IM), size(IM, 1)))
 # by the methods below.
 \(IMa::Eye{T}, IMb::Eye{V}) where {T, V} = IMa * IMb
 \(AM::AbstractMatrix{T}, IM::Eye{V}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, inv(AM))
+/(IM::Eye, AM::AbstractMatrix) = \(AM, IM)
 \(IM::Eye{V}, AM::AbstractMatrix{T}) where {T, V} = convert(AbstractMatrix{promote_op(*, T, V)}, AM)
 
 \(IM::Eye, s::UniformScaling) = s.λ * IM
