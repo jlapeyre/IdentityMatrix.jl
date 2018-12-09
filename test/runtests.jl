@@ -2,6 +2,7 @@ using IdentityMatrix
 using Test
 using LinearAlgebra
 using FillArrays
+using MethodInSrc
 
 @testset  "norms" begin
     for ncols in (0, 1, 3, 10)
@@ -11,6 +12,7 @@ using FillArrays
             for op in (opnorm, norm, x -> norm(x, 1), x -> norm(x, 2), x -> norm(x, Inf), x -> norm(x, -Inf), x -> norm(x, 3//2))
                 @test op(m) == op(md)
             end
+            @test @isinsrc opnorm(m)
         end
     end
 end
@@ -20,33 +22,36 @@ end
         IM = Eye(ncols)
         IMd = Matrix(IM)
         @test isa(imag(IM), Diagonal)
-        for f in (imag, iszero, isposdef, sum, prod, first, last,
+        for f in (imag, isposdef, sum, prod, first, last,
                   minimum, maximum, extrema, triu, triu!, tril, tril!, inv,
                   diag, det, logdet, sqrt)
-            @test f(IM) == f(copy(IMd))
+            @test @insrc(f(IM)) == f(copy(IMd))
+        end
+        for f in (iszero, )
+            @test @ninsrc(f(IM)) == f(copy(IMd))
         end
         for p in -5:5
-            @test IM^p == IM
+            @test IM == @insrc IM^p
         end
         @test isa(copy(IM), Diagonal)
-        @test isa(Matrix(IM), Matrix)
+        @test isa(@insrc(Matrix(IM)), Matrix)
     end
 end
 
 @testset "mul and div" begin
     for ncols in (1, 3 ,10)
         IM = Eye(ncols)
-        @test IM * IM === IM
-        @test IM / IM === IM
-        @test IM \ IM === IM
+        @test IM === @insrc IM * IM
+        @test IM === @insrc IM / IM
+        @test IM === @insrc IM \ IM
 
         rm = rand(ncols, ncols)
-        @test IM * rm === rm
-        @test rm * IM === rm
-        @test rm / IM === rm
-        @test IM / rm == inv(rm)
-        @test rm \ IM ==  inv(rm)
-        @test IM \ rm == rm
+        @test rm === @insrc IM * rm
+        @test rm === @insrc rm * IM
+        @test rm === @insrc rm / IM
+        @test inv(rm) == @insrc IM / rm
+        @test inv(rm) == @insrc rm \ IM
+        @test rm == @insrc IM \ rm
     end
 end
 
@@ -54,13 +59,13 @@ end
     for d in (1, 2, 3, 10)
        for  T1 in (Int, Float64, ComplexF64)
            for T2 in (Int, Float64, ComplexF64)
-               @test Eye{T1}(d) * Zeros{T2}(d, d) == Zeros{typeof(one(T1)*one(T2))}(d, d)
-               @test Eye{T1}(d) * Zeros{T2}(d) == Zeros{typeof(one(T1)*one(T2))}(d)
-               @test Eye{T1}(d) * Ones{T2}(d, d) == Ones{typeof(one(T1)*one(T2))}(d, d)
-               @test Eye{T1}(d) * Ones{T2}(d) == Ones{typeof(one(T1)*one(T2))}(d)
+               @test @insrc(Eye{T1}(d) * Zeros{T2}(d, d)) == Zeros{typeof(one(T1)*one(T2))}(d, d)
+               @test @insrc(Eye{T1}(d) * Zeros{T2}(d)) == Zeros{typeof(one(T1)*one(T2))}(d)
+               @test @insrc(Eye{T1}(d) * Ones{T2}(d, d)) == Ones{typeof(one(T1)*one(T2))}(d, d)
+               @test @insrc(Eye{T1}(d) * Ones{T2}(d)) == Ones{typeof(one(T1)*one(T2))}(d)
                for val in (1, 2)
-                   @test Eye{T1}(d) * Fill{T2}(val, d, d) == Fill{typeof(one(T1)*one(T2))}(val, d, d)
-                   @test Eye{T1}(d) * Fill{T2}(val, d) == Fill{typeof(one(T1)*one(T2))}(val, d)
+                   @test @insrc(Eye{T1}(d) * Fill{T2}(val, d, d)) == Fill{typeof(one(T1)*one(T2))}(val, d, d)
+                   @test @insrc(Eye{T1}(d) * Fill{T2}(val, d)) == Fill{typeof(one(T1)*one(T2))}(val, d)
                end
            end
        end
@@ -71,13 +76,13 @@ end
     for T in (Int, Float64, ComplexF64)
         d1 = 1
         m = Eye{T}(d1)
-        @test ! any(iszero, m)
-        @test ! all(iszero, m)
-        @test any(isone, m)
-        @test all(isone, m)
+        @test ! @inmodule FillArrays any(iszero, m)
+        @test ! @ninsrc all(iszero, m)
+        @test @ninsrc any(isone, m)
+        @test @ninsrc all(isone, m)
 
         onem = Ones{T}(d1, d1)
-        @test isone(onem)
+        @test @ninsrc isone(onem)
         @test ! iszero(onem)
 
         zerom = Zeros{T}(d1, d1)
@@ -130,7 +135,7 @@ end
             for fop in (sum, prod)
                 mi = Eye{T}(ncols)
                 midense = Matrix(mi)
-                r = fop(mi)
+                r = @insrc fop(mi)
                 rdense = fop(midense)
                 @test r == rdense
                 @test typeof(r) == eltype(mi)
@@ -142,7 +147,7 @@ end
 @testset "transform" begin
     m = Eye(3)
     for f in (triu, triu!, tril, tril!, inv)
-        @test f(m) == m # FIXME: why does === fail ?
+        @test m == @insrc f(m) # FIXME: why does === fail ?
     end
 end
 
@@ -152,11 +157,11 @@ end
             im = Eye(ncols1)
             imd = Matrix(im)
             md = rand(ncols2, ncols2)
-            @test kron(imd, md) == kron(im, md)
-            @test kron(md, imd) == kron(md, im)
-            @test isone(kron(im, im))
+            @test kron(imd, md) == @insrc kron(im, md)
+            @test kron(md, imd) == @insrc kron(md, im)
+            @test isone(@isinsrc(kron(im, im)))
             @test isa(kron(im, im), typeof(im))
-            @test size(kron(im, zeros(0, 0))) == (0,0)
+            @test size(@insrc(kron(im, zeros(0, 0)))) == (0,0)
             @test size(kron(zeros(0, 0), im)) == (0,0)
         end
     end
@@ -183,11 +188,11 @@ end
     for ncols in (0, 1, 3, 5)
         im = Eye(ncols)
         md = Matrix(im)
-        ri = eigen(im)
+        ri = @insrc eigen(im)
         rd = eigen(md)
         @test isapprox(ri.values, rd.values)
         @test isapprox(ri.vectors, rd.vectors)
-        @test isapprox(eigvals(im), eigvals(md))
+        @test isapprox(eigvals(md), @insrc(eigvals(im)))
         @test isapprox(eigvecs(im), eigvecs(md))
         @test isa(ri.vectors, typeof(im))
     end

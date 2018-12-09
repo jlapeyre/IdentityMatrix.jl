@@ -20,8 +20,8 @@ notifications:
 install:
   - ps: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))
 build_script:
-  - echo "%JL_BUILD_SCRIPT%"
-  - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%"
+  - echo "using Pkg; Pkg.develop(Pkg.PackageSpec(url=\"https://github.com/jlapeyre/MethodInSrc.jl\")); Pkg.develop(Pkg.PackageSpec(url=\"https://github.com/JuliaArrays/FillArrays.jl\")); Pkg.clone(pwd(), \"IdentityMatrix\"); Pkg.build(\"IdentityMatrix\"); Pkg.test(\"IdentityMatrix\"; coverage=true)"
+  - C:\julia\bin\julia -e "using Pkg; Pkg.develop(Pkg.PackageSpec(url=\"https://github.com/jlapeyre/MethodInSrc.jl\")); Pkg.develop(Pkg.PackageSpec(url=\"https://github.com/JuliaArrays/FillArrays.jl\")); Pkg.clone(pwd(), \"IdentityMatrix\"); Pkg.build(\"IdentityMatrix\"); Pkg.test(\"IdentityMatrix\"; coverage=true)"
 test_script:
   - echo "%JL_TEST_SCRIPT%"
   - C:\julia\bin\julia -e "%JL_TEST_SCRIPT%"

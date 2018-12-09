@@ -11,6 +11,10 @@ julia:
 #   fast_finish: true
 notifications:
   email: false
+script:
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - julia --check-bounds=yes --color=yes -e 'using Pkg; Pkg.develop(Pkg.PackageSpec(url="https://github.com/jlapeyre/MethodInSrc.jl")); Pkg.develop(Pkg.PackageSpec(url="https://github.com/JuliaArrays/FillArrays.jl")); Pkg.clone(pwd()); Pkg.build("IdentityMatrix"); Pkg.test("IdentityMatrix"; coverage=true)'
+  
 after_success:
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
