@@ -5,6 +5,8 @@ version = "1.0.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MethodInSrc = "c116309b-47aa-4bde-803c-ba7517b69216"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
 [compat]
 julia = "1.6.7"
