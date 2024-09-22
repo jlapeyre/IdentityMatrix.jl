@@ -10,3 +10,8 @@ This implementation is less complicated and somewhat more performant for some ta
 
 This package is meant to be used when you do a lot of work with matrices of a few fixed sizes. The size of the identity matrix
 is encoded in the type. This means that methods will be recompiled for each size.
+
+
+#### History
+
+This is a rewrite of a previous version of this package. The API is not at all the same.

@@ -79,7 +79,9 @@ end
 
     @test LinearAlgebra.eigvals(Id(2)) == ones(Float64, 2)
 
-    @test ! ismutabletype(Id{T, N} where {T, N})
+    if ! (VERSION < v"1.7")
+        @test ! ismutabletype(Id{T, N} where {T, N})
+    end
 end
 
 # Bounds check tests must run in in a different process because bounds checking is enabled

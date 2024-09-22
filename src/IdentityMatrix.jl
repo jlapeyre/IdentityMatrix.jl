@@ -15,6 +15,12 @@ import LinearAlgebra
 using LinearAlgebra: Diagonal
 export Id
 
+if VERSION < v"1.8"
+    const maybe_LazyString = string
+else
+    const maybe_LazyString = LazyString
+end
+
 """
     Id{T, N}
 
@@ -107,13 +113,13 @@ end
 
 function Base.:*(::Id{T, N}, m::AbstractMatrix{T}) where {T, N}
     mB = size(m, 1)
-    mB == N || throw(DimensionMismatch(lazy"A has dimensions ($N,$N) but B has first dimension $mB"))
+    mB == N || throw(DimensionMismatch(maybe_LazyString("A has dimensions (", N, ", ", N, ") but B has first dimension ", mB)))
     copy(m)
 end
 
 function Base.:*(::Id{T, N}, m::AbstractMatrix{T2}) where {T, N, T2}
     mB = size(m, 1)
-    mB == N || throw(DimensionMismatch(lazy"A has dimensions ($N,$N) but B has first dimension $mB"))
+    mB == N || throw(DimensionMismatch(maybe_LazyString("A has dimensions (", N, ", ", N, ") but B has first dimension ", mB)))
     convert(AbstractArray{promote_type(T, T2)}, m) # This is evidently faster
 #    Matrix{promote_type(T, T2)}(m)
 end
@@ -122,20 +128,20 @@ Base.:*(::Id{T, N}, ::Id{T, N}) where {T, N} = Id{T, N}()
 
 function Base.:*(::Id{T, N}, m::Diagonal{T}) where {T, N}
     mB = size(m, 1)
-    mB == N || throw(DimensionMismatch(lazy"A has dimensions ($N,$N) but B has first dimension $mB"))
+    mB == N || throw(DimensionMismatch(maybe_LazyString("A has dimensions (", N, ", ", N, ") but B has first dimension ", mB)))
     copy(m)
 end
 
 function Base.:*(::Id{T, N}, m::Diagonal{T2}) where {T, N, T2}
     mB = size(m, 1)
-    mB == N || throw(DimensionMismatch(lazy"A has dimensions ($N,$N) but B has first dimension $mB"))
+    mB == N || throw(DimensionMismatch(maybe_LazyString("A has dimensions (", N, ", ", N, ") but B has first dimension ", mB)))
     Tp = promote_type(T, T2)
     Diagonal(convert(Vector{Tp}, m.diag))
 end
 
 function Base.:/(mid::Id{T,N}, m::AbstractMatrix{T}) where {T, N}
     mB = size(m, 2)
-    mB == N || throw(DimensionMismatch(lazy"A has dimensions ($N,$N) but B has second dimension $mB"))
+    mB == N || throw(DimensionMismatch(maybe_LazyString("A has dimensions (", N, ", ", N, ") but B has second dimension ", mB)))
     LinearAlgebra.pinv(m)
 end
 
