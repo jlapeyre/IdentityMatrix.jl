@@ -9,6 +9,7 @@ MethodInSrc = "c116309b-47aa-4bde-803c-ba7517b69216"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
 [compat]
+MethodInSrc = "1"
 julia = "1.6.7"
 
 [extras]
