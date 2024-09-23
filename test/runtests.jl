@@ -8,9 +8,10 @@ using MethodInSrc
         for N in (1, 2, 4, 10)
             mrand = rand(N, N)
             M = Id(T, N)
-            @test @isinsrc isreal(M)
-            @test @isinsrc in(3, M)
-            @test @isinsrc isone(M)
+            @test @insrc isreal(M)
+            @test @insrc in(1, M)
+            @test @insrc isone(M)
+
             @test @isinsrc iszero(M)
             @test @isinsrc LinearAlgebra.diag(M)
             @test @isinsrc LinearAlgebra.diag(M, 2)
@@ -25,8 +26,16 @@ using MethodInSrc
             @test @isinsrc mrand * M
             @test @isinsrc 3.0 * M
             @test @isinsrc M * 3.1
+
+            @test @ninsrc eltype(M) == T
         end
     end
+end
+
+@testset "Construction" begin
+    id = Id{ComplexF64, 3}()
+    @test eltype(id) == ComplexF64
+    @test isreal(id)
 end
 
 @testset "IdentityMatrix.jl" begin
@@ -78,6 +87,19 @@ end
     @test big(Id(Int, 2)) isa Id{BigInt, 2}
 
     @test LinearAlgebra.eigvals(Id(2)) == ones(Float64, 2)
+
+    @test string(Id(3)) == "Id{Float64, 3}()"
+    @test string(Id(ComplexF64, 10)) == "Id{ComplexF64, 10}()"
+    @test copy(Id(4)) === Id(4)
+
+    idm = collect(Id(2))
+    @test isa(idm, Matrix{Float64})
+    @test size(idm) == (2, 2)
+    @test [Id(2)[i] for i in 1:4] == [1.0, 0.0, 0.0, 1.0]
+
+    m = rand(2, 2)
+    @test Id(2) * m == m
+    @test m * Id(2) == m
 
     if ! (VERSION < v"1.7")
         @test ! ismutabletype(Id{T, N} where {T, N})

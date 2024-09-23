@@ -54,23 +54,13 @@ Id(::Type{T},  n::Integer) where T = Id{T, n}()
 #Base.show(x::Id) = show(stdout, x)
 
 function Base.show(io::IO, x::Id)
-    print(io, "Id(", size(x,1))
-    if size(x,1) != size(x,2)
-        print(io, ",", size(x,2))
-    end
-    print(io, ")")
+    print(io, "Id{", eltype(x), ", ", size(x,1), "}()")
 end
-
-Base.array_summary(io::IO, a::Id{T, N}, inds::Tuple{Vararg{Base.OneTo}}) where {T, N} =
-    print(io, Base.dims2string(length.(inds)), " Id{$T, $N}")
 
 # There is no point to representing the elements of the identity matrix.
 # So we show minimal information.
 function Base.show(io::IO, ::MIME"text/plain", x::Id)
-    if get(IOContext(io), :compact, false)  # for example [Fill(i==j,2,2) for i in 1:3, j in 1:4]
-        return show(io, x)
-    end
-    summary(io, x)
+    show(io, x)
 end
 
 # Id is optimally indexed with cartesian indices
