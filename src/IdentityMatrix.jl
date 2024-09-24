@@ -43,7 +43,6 @@ Return Id{ComplexF64, n}().
 """
 Id(::Type{Complex}, n::Integer) = Id(ComplexF64, n)
 
-
 """
     Id(::Type{T}, n::Integer)
 

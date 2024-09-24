@@ -27,7 +27,8 @@ using MethodInSrc
             @test @isinsrc 3.0 * M
             @test @isinsrc M * 3.1
 
-            @test @ninsrc eltype(M) == T
+            @test ! @isinsrc eltype(M)
+            @test ! @isinsrc length(M)
         end
     end
 end
@@ -36,6 +37,7 @@ end
     id = Id{ComplexF64, 3}()
     @test eltype(id) == ComplexF64
     @test isreal(id)
+    @test Id(Complex, 3) == Id{ComplexF64, 3}()
 end
 
 @testset "IdentityMatrix.jl" begin
@@ -90,6 +92,9 @@ end
 
     @test string(Id(3)) == "Id{Float64, 3}()"
     @test string(Id(ComplexF64, 10)) == "Id{ComplexF64, 10}()"
+    io = IOBuffer()
+    show(io, MIME"text/plain"(), Id(3))
+    @test String(take!(io)) == string(Id(3))
     @test copy(Id(4)) === Id(4)
 
     idm = collect(Id(2))
@@ -100,6 +105,27 @@ end
     m = rand(2, 2)
     @test Id(2) * m == m
     @test m * Id(2) == m
+    @test m * Id(Complex, 2) == complex(m)
+    @test Id(Complex, 2) * m == complex(m)
+    m_diag = LinearAlgebra.diagm([1, 2, 3])
+    fm_diag = float(m_diag)
+    @test m_diag * Id(3) == fm_diag
+    @test Id(3) * m_diag == fm_diag
+    @test fm_diag * Id(Int, 3) == fm_diag
+    @test Id(Int, 3) * fm_diag == fm_diag
+
+    m_scaled_expected = LinearAlgebra.UniformScaling(13)(3)
+    m_scaled = 13 * Id(Int, 3)
+    @test m_scaled == m_scaled_expected
+    @test eltype(m_scaled) == Int
+    @test isa(m_scaled, LinearAlgebra.Diagonal)
+
+    fm_scaled_expected = float(m_scaled_expected)
+    fm_scaled = 13 * Id(3)
+    @test fm_scaled == m_scaled_expected
+    @test eltype(fm_scaled) == Float64
+    @test eltype(fm_scaled) == eltype(fm_scaled_expected)
+    @test isa(fm_scaled, LinearAlgebra.Diagonal)
 
     if ! (VERSION < v"1.7")
         @test ! ismutabletype(Id{T, N} where {T, N})
