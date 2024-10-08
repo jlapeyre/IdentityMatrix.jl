@@ -89,6 +89,16 @@ function Base.collect(m::Id{T, N}) where {T, N}
     mout
 end
 
+function Base.copyto!(A::AbstractMatrix, m::Id)
+    size(A) == size(m) || throw(DimensionMismatch())
+    fill!(A, zero(eltype(m)))
+    _one = one(eltype(A))
+    for i in 1:size(m)[1]
+        A[i, i] = _one
+    end
+    A
+end
+
 @inline function Base.getindex(mi::Id{T, N}, i::Integer, j::Integer) where {T, N}
     @boundscheck checkbounds(mi, i, j)
     i == j && return one(T)
@@ -98,6 +108,14 @@ end
 @inline function Base.getindex(m::Id{T, N}, ilin::Integer) where {T, N}
     (i, j) = divrem(ilin - 1, N)
     m[i+1, j+1]
+end
+
+function Base.:(==)(::Id{<:Any, N}, ::Id{<:Any, N}) where N
+    return true
+end
+
+function Base.:(==)(::Id{<:Any, N}, ::Id{<:Any, M}) where {M, N}
+    return false
 end
 
 function Base.:*(::Id{T, N}, m::AbstractMatrix{T}) where {T, N}
@@ -114,6 +132,8 @@ function Base.:*(::Id{T, N}, m::AbstractMatrix{T2}) where {T, N, T2}
 end
 
 Base.:*(::Id{T, N}, ::Id{T, N}) where {T, N} = Id{T, N}()
+Base.:*(::Id{T1, N}, ::Id{T2, N}) where {T1, T2, N} = Id{promote_type(T1, T2), N}()
+Base.:*(::Id{T1, N1}, ::Id{T2, N2}) where {T1, T2, N1, N2} = throw(DimensionMismatch())
 
 function Base.:*(::Id{T, N}, m::Diagonal{T}) where {T, N}
     mB = size(m, 1)
@@ -198,6 +218,8 @@ Base.issubset(v, ::Id{T, N}) where {T, N} = all(x -> x == one(T) || x == zero(T)
 Base.issubset(v, ::Id{T, 1}) where T = all(x -> x == one(T), v)
 Base.isreal(::Id) = true
 LinearAlgebra.isposdef(::Id) = true
+LinearAlgebra.ishermitian(::Id) = true
+LinearAlgebra.issymmetric(::Id) = true
 
 # Fallback is efficient
 # Base.zero

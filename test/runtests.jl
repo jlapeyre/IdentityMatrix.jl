@@ -1,8 +1,11 @@
 using IdentityMatrix
 using Test
 import LinearAlgebra
+using LinearAlgebra: eigvals, eigen, eigmin, eigmax,
+    Diagonal, kron
 using MethodInSrc
 
+# Some of these are included in specific sections
 @testset "Methods in source" begin
     for T in (Int, Float64, ComplexF64)
         for N in (1, 2, 4, 10)
@@ -17,6 +20,8 @@ using MethodInSrc
             @test @isinsrc LinearAlgebra.diag(M, 2)
             @test @isinsrc LinearAlgebra.eigvals(M)
             @test @isinsrc LinearAlgebra.isposdef(M)
+            @test @isinsrc LinearAlgebra.ishermitian(M)
+            @test @isinsrc LinearAlgebra.issymmetric(M)
             @test @isinsrc size(M)
             @test @isinsrc complex(M)
             @test @isinsrc float(M)
@@ -26,6 +31,10 @@ using MethodInSrc
             @test @isinsrc mrand * M
             @test @isinsrc 3.0 * M
             @test @isinsrc M * 3.1
+            @test @isinsrc collect(M)
+#            @test @isinsrc M == Id(T, 3)
+
+            @test @isinsrc copyto!(mrand, M)
 
             @test ! @isinsrc eltype(M)
             @test ! @isinsrc length(M)
@@ -38,6 +47,12 @@ end
     @test eltype(id) == ComplexF64
     @test isreal(id)
     @test Id(Complex, 3) == Id{ComplexF64, 3}()
+end
+
+@testset "Properties" begin
+    @test LinearAlgebra.isposdef(Id(3))
+    @test LinearAlgebra.ishermitian(Id(3))
+    @test LinearAlgebra.issymmetric(Id(3))
 end
 
 @testset "IdentityMatrix.jl" begin
@@ -88,8 +103,6 @@ end
     @test big(Id(2)) isa Id{BigFloat, 2}
     @test big(Id(Int, 2)) isa Id{BigInt, 2}
 
-    @test LinearAlgebra.eigvals(Id(2)) == ones(Float64, 2)
-
     @test string(Id(3)) == "Id{Float64, 3}()"
     @test string(Id(ComplexF64, 10)) == "Id{ComplexF64, 10}()"
     io = IOBuffer()
@@ -102,11 +115,33 @@ end
     @test size(idm) == (2, 2)
     @test [Id(2)[i] for i in 1:4] == [1.0, 0.0, 0.0, 1.0]
 
-    m = rand(2, 2)
-    @test Id(2) * m == m
-    @test m * Id(2) == m
-    @test m * Id(Complex, 2) == complex(m)
-    @test Id(Complex, 2) * m == complex(m)
+    mrand = rand(2, 2)
+    result = copyto!(mrand, Id(2))
+    @test result === mrand
+    @test mrand == Id(2)
+    @test eltype(mrand) == Float64
+
+    if ! (VERSION < v"1.7")
+        @test ! ismutabletype(Id{T, N} where {T, N})
+    end
+end
+
+@testset "multiplication" begin
+    for T in (Float64, ComplexF64, Int8, UInt)
+        @test Id(3) * Id(3) == Id(3)
+        @test eltype(Id(3) * Id(3)) == eltype(Id(3))
+    end
+
+    @test eltype(Id(Float64, 3) * Id(Int, 3)) == Float64
+    @test_throws DimensionMismatch Id(3) * Id(2)
+    @test_throws DimensionMismatch Id(Int, 3) * Id(Float64, 2)
+
+    mrand = rand(2, 2)
+    @test Id(2) * mrand == mrand
+    @test mrand * Id(2) == mrand
+    @test mrand * Id(Complex, 2) == complex(mrand)
+    @test Id(Complex, 2) * mrand == complex(mrand)
+
     m_diag = LinearAlgebra.diagm([1, 2, 3])
     fm_diag = float(m_diag)
     @test m_diag * Id(3) == fm_diag
@@ -127,9 +162,51 @@ end
     @test eltype(fm_scaled) == eltype(fm_scaled_expected)
     @test isa(fm_scaled, LinearAlgebra.Diagonal)
 
-    if ! (VERSION < v"1.7")
-        @test ! ismutabletype(Id{T, N} where {T, N})
+    mdiag = Diagonal([1,2,3])
+    mult_result = Id(Int, 3) * Diagonal([1,2,3])
+    @test mult_result == mdiag
+    @test typeof(mdiag) == typeof(mult_result)
+
+    mult_result = Id(Float64, 3) * Diagonal([1,2,3])
+    @test mult_result == mdiag
+    @test mult_result isa Diagonal{Float64, Vector{Float64}}
+end
+
+@testset "Linear Algebra" begin
+    for T in (Int, Float64, ComplexF64)
+        evals = LinearAlgebra.eigvals(Id(T, 2))
+        @test evals == ones(2)
+        @test evals isa Vector{T}
+        im = Id(T,3)
+        @test eigmin(im) == 1
+        @test eigmax(im) == 1
+        @test eigmin(im) isa T
+        @test eigmax(im) isa T
+        @test eigen(im) == eigen(collect(im))
     end
+    @test kron(Id(3), Id(4)) == Id(12)
+    @test kron(Id(3), Id(Int, 4)) == Id(12)
+end
+
+@testset "Comparisons" begin
+    for T in (Int, Float64, ComplexF64)
+        M = Id(T, 3)
+        @test @isinsrc M == Id(T, 3)
+        @test @isinsrc M == Id(3)
+        @test Base.:(==)(M, Id(T, 3))
+        @test M == Id(3)
+    end
+end
+
+@testset "Predicates" begin
+    for T in (Int, Float64, ComplexF64)
+        M = Id(T, 3)
+        @test @isinsrc isone(M)
+        @test @isinsrc iszero(M)
+        @test isone(M)
+        @test !iszero(M)
+    end
+    @test_throws MethodError isone(Id(String, 3))
 end
 
 # Bounds check tests must run in in a different process because bounds checking is enabled
