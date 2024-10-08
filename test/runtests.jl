@@ -194,6 +194,7 @@ end
         @test @isinsrc M == Id(T, 3)
         @test @isinsrc M == Id(3)
         @test Base.:(==)(M, Id(T, 3))
+        @test Base.:(!=)(M, Id(T, 4))
         @test M == Id(3)
     end
 end
