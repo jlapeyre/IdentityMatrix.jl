@@ -114,8 +114,12 @@ function Base.:(==)(::Id{<:Any, N}, ::Id{<:Any, N}) where N
     return true
 end
 
-function Base.:(==)(::Id{<:Any, N}, ::Id{<:Any, M}) where {M, N}
-    return false
+function Base.:(==)(::Id{<:Any, N}, d::Diagonal{Bool, Vector{Bool}}) where {N}
+    return  length(d.diag) == N
+end
+
+function Base.:(==)(d::Diagonal{Bool, Vector{Bool}}, m::Id{<:Any, N}) where {N}
+    return  m == d
 end
 
 function Base.:*(::Id{T, N}, m::AbstractMatrix{T}) where {T, N}
