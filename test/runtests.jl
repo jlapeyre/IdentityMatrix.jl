@@ -182,7 +182,14 @@ end
         @test eigmax(im) == 1
         @test eigmin(im) isa T
         @test eigmax(im) isa T
-        @test eigen(im) == eigen(collect(im))
+        if VERSION >= v"1.7"
+            @test eigen(im) == eigen(collect(im))
+        else
+            e1 = eigen(im)
+            e2 = eigen(collect(im))
+            @test e1.values == e2.values
+            @test e1.vectors == e2.vectors
+        end
     end
     @test kron(Id(3), Id(4)) == Id(12)
     @test kron(Id(3), Id(Int, 4)) == Id(12)
@@ -207,7 +214,9 @@ end
         @test isone(M)
         @test !iszero(M)
     end
-    @test_throws MethodError isone(Id(String, 3))
+    if VERSION >= v"1.8"
+        @test_throws MethodError isone(Id(String, 3))
+    end
 end
 
 # Bounds check tests must run in in a different process because bounds checking is enabled

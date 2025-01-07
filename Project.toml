@@ -1,20 +1,20 @@
 name = "IdentityMatrix"
 uuid = "8edef7da-e1b3-479c-b6e4-7e7cac36144b"
 authors = ["John Lapeyre <jlapeyre@users.noreply.github.com> and contributors"]
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MethodInSrc = "c116309b-47aa-4bde-803c-ba7517b69216"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
 [compat]
-PrecompileTools = "1"
 MethodInSrc = "1"
+PrecompileTools = "1"
 julia = "1.6.7"
 
 [extras]
+MethodInSrc = "c116309b-47aa-4bde-803c-ba7517b69216"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "MethodInSrc"]
